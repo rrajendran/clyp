@@ -1,0 +1,70 @@
+{
+  "name": "clyp",
+  "version": "1.0.0",
+  "description": "Fast, Private, Cross-Platform Clipboard Manager",
+  "main": "app/main/main.js",
+  "author": "Clyp rameshchinnu61@gmail.com",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder",
+    "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux",
+    "generate-icons": "node assets/icons/generate-icons-sharp.js"
+  },
+  "dependencies": {
+    "electron-store": "^8.1.0",
+    "file-type": "^21.3.0",
+    "is-html": "^3.2.0",
+    "mime-types": "^3.0.2"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1",
+    "sharp": "^0.34.5",
+    "js-beautify": "^1.14.8"
+  },
+  "build": {
+    "appId": "com.clyp.clipboard",
+    "productName": "Clyp",
+    "directories": {
+      "output": "dist",
+      "buildResources": "assets"
+    },
+    "files": [
+      "app/**",
+      "assets/**",
+      "config/**",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        "dmg"
+      ],
+      "icon": "assets/icons/icon.icns"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "assets/icons/icon.ico"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb",
+        "rpm"
+      ],
+      "icon": "assets/icons",
+      "category": "Utility",
+      "maintainer": "Ramesh Rajendran rameshchinnu61@gmail.com"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
