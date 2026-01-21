@@ -226,6 +226,9 @@ describe('TrayManager', () => {
 
   describe('icon loading', () => {
     it('should handle icon load errors gracefully', () => {
+      // Suppress console.error for this test since we're testing error handling
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      
       nativeImage.createFromPath.mockImplementation(() => {
         throw new Error('Icon not found');
       });
@@ -239,6 +242,12 @@ describe('TrayManager', () => {
       };
       
       expect(() => new TrayManager(mockStorage)).not.toThrow();
+      
+      // Verify error was logged
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to initialize tray:', expect.any(Error));
+      
+      // Restore console.error
+      consoleErrorSpy.mockRestore();
     });
   });
 });

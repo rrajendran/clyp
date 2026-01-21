@@ -321,6 +321,13 @@ class StorageManager {
   }
 
   /**
+   * Clear all storage data (history and settings)
+   */
+  clearAllData() {
+    this.store.clear();
+  }
+
+  /**
    * Get store path (for debugging)
    */
   getStorePath() {
