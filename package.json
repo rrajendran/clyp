@@ -44,13 +44,13 @@
       "target": [
         "dmg"
       ],
-      "icon": "assets/icons/icon.icns"
+      "icon": "assets/icons/mac/icon.icns"
     },
     "win": {
       "target": [
         "nsis"
       ],
-      "icon": "assets/icons/icon.ico"
+      "icon": "assets/icons/png/512x512.png"
     },
     "linux": {
       "target": [
@@ -58,7 +58,7 @@
         "deb",
         "rpm"
       ],
-      "icon": "assets/icons",
+      "icon": "assets/icons/png/512x512.png",
       "category": "Utility",
       "maintainer": "Ramesh Rajendran rameshchinnu61@gmail.com"
     },

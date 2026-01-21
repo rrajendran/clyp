@@ -1,6 +1,7 @@
 const { clipboard, nativeImage, powerMonitor } = require('electron');
 const EventEmitter = require('events');
 const crypto = require('crypto');
+const path = require('path');
 
 // Constants for optimization
 const DEFAULT_POLL_INTERVAL = 500;
@@ -59,6 +60,8 @@ class ClipboardMonitor extends EventEmitter {
     
     // Initialize power monitoring
     this._initializePowerMonitoring();
+    
+    const iconPath = path.join(__dirname, '../assets/icons/png/icon.png'); // Update path to dock icon
   }
 
   /**

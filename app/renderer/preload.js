@@ -37,5 +37,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Event listeners
   onHistoryUpdated: (callback) => {
     ipcRenderer.on('history-updated', (event, history) => callback(history));
+  },
+  onSettingsChanged: (callback) => {
+    ipcRenderer.on('settings-changed', (event, settings) => callback(settings));
   }
 });

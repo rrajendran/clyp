@@ -11,7 +11,7 @@
     <!-- Header -->
     <div class="settings-header">
       <div class="branding">
-        <img class="clyp-logo" data-src="icons/clyp-logo.svg" width="32" height="32" alt="Clyp - Fast, Private, Cross-Platform Clipboard Manager">
+        <img class="clyp-logo" data-src="icons/mac/32x32.png" width="32" height="32" alt="Clyp - Fast, Private, Cross-Platform Clipboard Manager">
         <h1 class="clyp-heading">Clyp Settings</h1>
       </div>
     </div>
@@ -187,7 +187,20 @@
                 <option value="system">System</option>
                 <option value="light">Light</option>
                 <option value="dark">Dark</option>
+                <option value="spring-glass">Spring Glass</option>
               </select>
+            </div>
+          </div>
+
+          <!-- Spring Glass Transparency Slider -->
+          <div class="setting-item" id="transparencySliderContainer" style="display: none;">
+            <div class="setting-info">
+              <label>Background Transparency</label>
+              <p>Adjust the opacity of the Spring Glass background</p>
+            </div>
+            <div class="setting-control">
+              <input type="range" id="transparencySlider" min="0" max="100" value="65" style="width: 150px;">
+              <span id="transparencyValue" style="margin-left: 12px; font-weight: 500;">65%</span>
             </div>
           </div>
         </div>
@@ -256,7 +269,7 @@
           
           <div class="about-content">
             <div class="about-logo">
-              <img data-src="icons/icon-64x64.png" width="64" height="64" alt="Clyp">
+              <img data-src="icons/64x64.png" width="64" height="64" alt="Clyp">
             </div>
             
             <h3>Clyp</h3>

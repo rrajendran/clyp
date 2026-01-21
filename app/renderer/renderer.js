@@ -103,8 +103,8 @@ function formatHtmlOrXml(source) {
 // Set icon paths dynamically
 async function setIconPaths() {
   try {
-    const logoSrc = await window.electronAPI.getAssetPath('icons/icon-32x32.png');
-    const emptyStateSrc = await window.electronAPI.getAssetPath('icons/icon.png');
+    const logoSrc = await window.electronAPI.getAssetPath('icons/png/32x32.png');
+    const emptyStateSrc = await window.electronAPI.getAssetPath('icons/png/128x128.png');
     
     const logoElements = document.querySelectorAll('.logo');
     logoElements.forEach(el => {
@@ -134,6 +134,11 @@ window.electronAPI.onHistoryUpdated((newHistory) => {
   history = newHistory;
   applyFilters();
   renderHistory();
+});
+
+// Listen for settings changes (including theme changes)
+window.electronAPI.onSettingsChanged((newSettings) => {
+  applyTheme(newSettings);
 });
 
 // Load initial history
@@ -762,16 +767,27 @@ function setupTagAutocomplete(input, allTags) {
   }
 }
 
-// Apply theme
-async function applyTheme() {
-  const settings = await window.electronAPI.getSettings();
+// Apply theme (optionally accepts pre-fetched settings to avoid extra IPC)
+async function applyTheme(prefetchedSettings) {
+  const settings = prefetchedSettings || await window.electronAPI.getSettings();
   const theme = settings.theme || 'system';
   let effectiveTheme = theme;
-  
+
   if (theme === 'system') {
     // Detect system theme
     effectiveTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
-  
+
+  // Apply Spring Glass transparency if relevant
+  if (effectiveTheme === 'spring-glass') {
+    const transparency = typeof settings.springGlassTransparency === 'number' ? settings.springGlassTransparency : 65;
+    const opacity = Math.min(Math.max(transparency, 0), 100) / 100;
+    const bg = `rgba(248, 255, 252, ${opacity})`;
+    document.documentElement.style.setProperty('--spring-glass-bg', bg);
+  } else {
+    // Reset to default when not in spring-glass
+    document.documentElement.style.removeProperty('--spring-glass-bg');
+  }
+
   document.documentElement.setAttribute('data-theme', effectiveTheme);
 }

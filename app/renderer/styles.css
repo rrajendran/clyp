@@ -10,6 +10,8 @@
   --border: #E1E4E8;
   --shadow: rgba(0, 0, 0, 0.1);
   --shadow-heavy: rgba(0, 0, 0, 0.15);
+  --item-border: var(--border);
+  --item-shadow: var(--shadow);
   --hover: #F0F3F7;
   --danger: #FF3B30;
   --success: #34C759;
@@ -173,6 +175,7 @@ body {
   flex: 1;
   overflow-y: auto;
   padding: 8px;
+  scroll-behavior: smooth;
 }
 
 .history-list {
@@ -184,12 +187,13 @@ body {
 /* History Item */
 .history-item {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--item-border);
   border-radius: 6px;
   padding: 12px;
   cursor: pointer;
   transition: all 0.2s;
   position: relative;
+  box-shadow: 0 4px 12px var(--item-shadow);
 }
 
 .history-item:hover {
@@ -613,6 +617,11 @@ body {
   background: #1A2B3C;
 }
 
+[data-theme="dark"] {
+  --item-border: #424242;
+  --item-shadow: rgba(0, 0, 0, 0.35);
+}
+
 /* System theme fallback */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
@@ -629,4 +638,47 @@ body {
   :root:not([data-theme]) .history-item.selected {
     background: #1A2B3C;
   }
+}
+
+/* Spring Glass theme */
+[data-theme="spring-glass"] {
+  --primary: #48C78E; /* Spring green */
+  --secondary: #7BD1B9;
+  --background: rgba(255, 255, 255, 0.4);
+  --surface: rgba(255, 255, 255, 0.5);
+  --text: #1F2A31;
+  --text-light: #5F6D75;
+  --border: rgba(255, 255, 255, 0.5);
+  --hover: rgba(255, 255, 255, 0.6);
+  --shadow: rgba(40, 80, 60, 0.25);
+  --shadow-heavy: rgba(40, 80, 60, 0.35);
+}
+
+[data-theme="spring-glass"] .app-container {
+  background: var(--spring-glass-bg, rgba(248, 255, 252, 0.65));
+  backdrop-filter: saturate(180%) blur(18px);
+  -webkit-backdrop-filter: saturate(180%) blur(18px);
+}
+
+[data-theme="spring-glass"] .header,
+[data-theme="spring-glass"] .search-container,
+[data-theme="spring-glass"] .filter-tabs,
+[data-theme="spring-glass"] .history-item,
+[data-theme="spring-glass"] .footer {
+  backdrop-filter: saturate(180%) blur(18px);
+  -webkit-backdrop-filter: saturate(180%) blur(18px);
+}
+
+[data-theme="spring-glass"] {
+  --item-border: rgba(72, 199, 142, 0.4);
+  --item-shadow: rgba(72, 199, 142, 0.22);
+}
+
+[data-theme="spring-glass"] .filter-tab.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+[data-theme="spring-glass"] .history-item.selected {
+  background: rgba(72, 199, 142, 0.15);
 }

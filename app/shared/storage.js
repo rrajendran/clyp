@@ -15,7 +15,7 @@ class StorageManager {
           captureImages: true,
           captureFiles: false,
           startOnBoot: false,
-          theme: 'system',
+          theme: 'spring-glass',
           shortcut: process.platform === 'darwin' ? 'Command+Shift+V' : 'Control+Shift+V',
           autoDeleteHistory: false,
           autoDeleteDays: 30,

@@ -77,15 +77,14 @@ class TrayManager extends EventEmitter {
    */
   getTrayIcon() {
     const platform = process.platform;
-    const iconsDir = path.join(__dirname, '../../assets/icons');
-    
+    const iconsDir = path.join(__dirname, '../../assets/icons/png');
+    // Use PNG variants that exist; we'll resize to tray size after load
     if (platform === 'darwin') {
-      // macOS uses Template images for automatic dark mode support
-      return path.join(iconsDir, 'icon-32x32.png');
+      return path.join(iconsDir, '32x32.png');
     } else if (platform === 'win32') {
-      return path.join(iconsDir, 'icon-32x32.png');
+      return path.join(iconsDir, '32x32.png');
     } else {
-      return path.join(iconsDir, 'icon-32x32.png');
+      return path.join(iconsDir, '32x32.png');
     }
   }
 
@@ -176,3 +175,4 @@ class TrayManager extends EventEmitter {
 }
 
 module.exports = TrayManager;
+//

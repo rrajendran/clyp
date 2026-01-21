@@ -3,6 +3,7 @@
 let settings = {};
 let isRecordingShortcut = false;
 let recordedKeys = [];
+let pressedKeys = new Set(); // Track currently pressed keys
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
@@ -12,11 +13,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   setIconPaths();
 });
 
+// Listen for settings changes from other windows
+if (window.electronAPI && window.electronAPI.onSettingsChanged) {
+  window.electronAPI.onSettingsChanged(async (newSettings) => {
+    settings = newSettings;
+    populateSettings();
+    applyTheme();
+  });
+}
+
 // Set icon paths dynamically
 async function setIconPaths() {
   try {
-    const logoSrc = await window.electronAPI.getAssetPath('icons/icon-32x32.png');
-    const aboutIconSrc = await window.electronAPI.getAssetPath('icons/icon-32x32.png');
+    const logoSrc = await window.electronAPI.getAssetPath('icons/png/32x32.png');
+    const aboutIconSrc = await window.electronAPI.getAssetPath('icons/png/64x64.png');
     // Support both .logo and legacy .clyp-logo selectors used in this
     // settings template so the header icon is populated correctly.
     const logoElements = document.querySelectorAll('.logo, .clyp-logo');
@@ -131,6 +141,8 @@ function setupEventListeners() {
   document.getElementById('theme').addEventListener('change', (e) => {
     updateSetting('theme', e.target.value);
     applyTheme();
+    // Show/hide transparency slider based on theme
+    toggleTransparencySlider(e.target.value);
   });
 
   // Privacy settings
@@ -158,6 +170,7 @@ function setupEventListeners() {
   const shortcutInput = document.getElementById('shortcut');
   shortcutInput.addEventListener('click', startRecordingShortcut);
   shortcutInput.addEventListener('keydown', recordShortcutKey);
+  shortcutInput.addEventListener('keyup', handleKeyUp);
   shortcutInput.addEventListener('blur', stopRecordingShortcut);
 
   // About section buttons
@@ -165,6 +178,28 @@ function setupEventListeners() {
 
   // Enable/disable auto-delete days based on toggle
   toggleAutoDeleteDays(settings.autoDeleteHistory);
+
+  // Transparency slider for Spring Glass theme
+  const transparencySlider = document.getElementById('transparencySlider');
+  if (transparencySlider) {
+    transparencySlider.addEventListener('input', (e) => {
+      const value = parseInt(e.target.value);
+      document.getElementById('transparencyValue').textContent = value + '%';
+      updateSetting('springGlassTransparency', value);
+      // Apply transparency change immediately to the app window
+      applySpringGlassTransparency(value);
+    });
+  }
+
+  // Show transparency slider if Spring Glass is selected
+  const currentTheme = settings.theme || 'system';
+  toggleTransparencySlider(currentTheme);
+
+  // Load and set transparency value if Spring Glass
+  if (currentTheme === 'spring-glass' && settings.springGlassTransparency) {
+    document.getElementById('transparencySlider').value = settings.springGlassTransparency;
+    document.getElementById('transparencyValue').textContent = settings.springGlassTransparency + '%';
+  }
 }
 
 // Switch section
@@ -215,6 +250,7 @@ function startRecordingShortcut() {
   
   isRecordingShortcut = true;
   recordedKeys = [];
+  pressedKeys.clear();
   const input = document.getElementById('shortcut');
   input.value = 'Press keys...';
   input.classList.add('recording');
@@ -228,49 +264,87 @@ function recordShortcutKey(event) {
   
   const key = event.key;
   const code = event.code;
-  recordedKeys = [];
+  const platform = window.electronAPI.getPlatform();
   
-  // Detect modifier keys first
+  // Build list of currently pressed keys
+  const currentKeys = [];
+  
+  // Detect modifier keys
   if (event.ctrlKey || event.metaKey) {
-    const platform = window.electronAPI.getPlatform();
-    recordedKeys.push(platform === 'darwin' ? 'Command' : 'Control');
+    const modKey = platform === 'darwin' ? 'Command' : 'Control';
+    if (!pressedKeys.has(modKey)) {
+      pressedKeys.add(modKey);
+    }
+    currentKeys.push(modKey);
   }
   if (event.shiftKey) {
-    recordedKeys.push('Shift');
+    if (!pressedKeys.has('Shift')) {
+      pressedKeys.add('Shift');
+    }
+    currentKeys.push('Shift');
   }
   if (event.altKey) {
-    recordedKeys.push('Alt');
+    if (!pressedKeys.has('Alt')) {
+      pressedKeys.add('Alt');
+    }
+    currentKeys.push('Alt');
   }
   
-  // Add the main key
-  if (key && key.length === 1) {
+  // Add the main key (non-modifier)
+  let mainKey = null;
+  if (key && key.length === 1 && !['Control', 'Shift', 'Alt', 'Meta'].includes(key)) {
     // Regular letter/number keys
-    recordedKeys.push(key.toUpperCase());
+    mainKey = key.toUpperCase();
   } else if (['Enter', 'Space', 'Tab', 'Backspace', 'Delete', 'Escape', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
     // Special keys
-    recordedKeys.push(key);
+    mainKey = key;
   } else if (key === ' ') {
-    recordedKeys.push('Space');
+    mainKey = 'Space';
+  } else if (key && key.startsWith('F') && key.length <= 3 && /^F\d+$/.test(key)) {
+    // Function keys
+    mainKey = key;
   } else if (code && code.startsWith('Key')) {
-    // Fallback for special key codes
-    recordedKeys.push(code.replace('Key', ''));
+    // Fallback for key codes
+    mainKey = code.replace('Key', '');
   } else if (code && code.startsWith('Digit')) {
-    recordedKeys.push(code.replace('Digit', ''));
+    mainKey = code.replace('Digit', '');
   }
   
-  // Require at least one modifier for single-key shortcuts (except function keys)
-  const hasModifier = recordedKeys.some(key => ['Control', 'Command', 'Shift', 'Alt'].includes(key));
-  const isFunctionKey = key && key.startsWith('F') && key.length <= 3 && /^\d+$/.test(key.substring(1));
+  if (mainKey && !['Control', 'Shift', 'Alt', 'Meta', 'Command'].includes(mainKey)) {
+    if (!pressedKeys.has(mainKey)) {
+      pressedKeys.add(mainKey);
+    }
+    currentKeys.push(mainKey);
+  }
   
-  if (recordedKeys.length >= 2 || (recordedKeys.length === 1 && isFunctionKey)) {
+  // Show the current combination in real-time
+  if (currentKeys.length > 0) {
+    recordedKeys = currentKeys;
     const shortcut = recordedKeys.join('+');
     document.getElementById('shortcut').value = shortcut;
-    stopRecordingShortcut();
-    updateSetting('shortcut', shortcut);
-    showNotification('Shortcut updated! Restart required.', 'info');
-  } else if (!hasModifier && recordedKeys.length === 1 && !isFunctionKey) {
-    // Show hint for invalid shortcut
-    showNotification('Shortcuts must include at least one modifier key (Ctrl/Cmd, Shift, Alt)', 'warning');
+  }
+}
+
+function handleKeyUp(event) {
+  if (!isRecordingShortcut) return;
+  
+  event.preventDefault();
+  event.stopPropagation();
+  
+  // Check if we have a valid combination recorded
+  if (recordedKeys.length > 0) {
+    const hasModifier = recordedKeys.some(key => ['Control', 'Command', 'Shift', 'Alt'].includes(key));
+    const hasMainKey = recordedKeys.some(key => !['Control', 'Command', 'Shift', 'Alt'].includes(key));
+    const isFunctionKey = recordedKeys.length === 1 && recordedKeys[0].startsWith('F');
+    
+    if ((hasModifier && hasMainKey) || isFunctionKey) {
+      // Valid combination - save it
+      const shortcut = recordedKeys.join('+');
+      document.getElementById('shortcut').value = shortcut;
+      stopRecordingShortcut();
+      updateSetting('shortcut', shortcut);
+      showNotification('Shortcut updated! Restart required.', 'info');
+    }
   }
 }
 
@@ -293,6 +367,21 @@ function toggleAutoDeleteDays(enabled) {
     input.disabled = !enabled;
     input.style.opacity = enabled ? '1' : '0.5';
   }
+}
+
+// Toggle transparency slider visibility
+function toggleTransparencySlider(theme) {
+  const container = document.getElementById('transparencySliderContainer');
+  if (container) {
+    container.style.display = theme === 'spring-glass' ? 'flex' : 'none';
+  }
+}
+
+// Apply Spring Glass transparency to CSS variable
+function applySpringGlassTransparency(value) {
+  const opacity = value / 100;
+  const bgColor = `rgba(248, 255, 252, ${opacity})`;
+  document.documentElement.style.setProperty('--spring-glass-bg', bgColor);
 }
 
 // Apply theme

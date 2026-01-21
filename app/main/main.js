@@ -1,4 +1,4 @@
-const { app, BrowserWindow, globalShortcut, ipcMain, Menu } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeImage } = require('electron');
 const path = require('path');
 const TrayManager = require('./tray');
 const ClipboardMonitor = require('./clipboardMonitor');
@@ -203,41 +203,16 @@ function registerShortcuts() {
   const settingsToRegister = settingsHasMain ? settingsTokens.join('+') : normalizeAccelerator(process.platform === 'darwin' ? 'Command+,' : 'Control+,');
   const finalSettingsShortcut = typeof settingsToRegister === 'string' ? settingsToRegister : settingsToRegister.join('+');
   const settingsRegistered = globalShortcut.register(finalSettingsShortcut, () => {
-    createSettingsWindow();
+    // Only open settings if a window is active
+    if ((mainWindow && !mainWindow.isDestroyed()) || (settingsWindow && !settingsWindow.isDestroyed())) {
+      createSettingsWindow();
+    }
   });
 
   if (!settingsRegistered) {
     console.error('Failed to register settings shortcut:', settingsShortcut, '(attempted ->', finalSettingsShortcut + ')');
   } else {
     console.log('Registered settings shortcut (attempted ->', finalSettingsShortcut + ')');
-  }
-
-  // Additionally, register the full alphabet combinations per requirement rule
-  try {
-    const isMac = process.platform === 'darwin';
-    const baseModifiers = isMac ? ['Command+Shift', 'Command+Alt'] : ['Control+Shift', 'Control+Alt'];
-    const alphabets = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-
-    baseModifiers.forEach(mod => {
-      alphabets.forEach(letter => {
-        const accel = `${mod}+${letter}`;
-        try {
-          const ok = globalShortcut.register(accel, () => {
-            console.log(`${accel} triggered`);
-            // Default behaviour: open main window for clipboard history
-            showMainWindow();
-          });
-          if (!ok) {
-            // registration may fail if another app uses it; log and continue
-            console.warn('Registration failed for', accel);
-          }
-        } catch (e) {
-          console.warn('Error registering', accel, e.message);
-        }
-      });
-    });
-  } catch (e) {
-    console.warn('Failed to register alphabet shortcuts:', e.message);
   }
 }
 
@@ -452,6 +427,17 @@ function initialize() {
 app.whenReady().then(() => {
   console.log('Electron app ready, initializing...');
   try {
+    // Set macOS Dock icon (safe no-op on other platforms)
+    if (process.platform === 'darwin') {
+      try {
+        const dockIcon = nativeImage.createFromPath(path.join(__dirname, '../../assets/icons/png/128x128.png'));
+        if (dockIcon && !dockIcon.isEmpty()) {
+          app.dock.setIcon(dockIcon);
+        }
+      } catch (e) {
+        console.warn('Failed to set Dock icon:', e.message);
+      }
+    }
     initialize();
     console.log('Clyp initialized successfully. App is running in background.');
     console.log('Press Cmd+Shift+V (Mac) or Ctrl+Shift+V (Windows/Linux) to open clipboard history.');
@@ -531,6 +517,15 @@ ipcMain.handle('update-settings', (event, settings) => {
     } catch (e) {
       console.warn('Failed to toggle dock visibility:', e.message);
     }
+  }
+  
+  // Broadcast settings change to all windows
+  const updatedSettings = storageManager.getSettings();
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('settings-changed', updatedSettings);
+  }
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    settingsWindow.webContents.send('settings-changed', updatedSettings);
   }
   
   return true;

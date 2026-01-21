@@ -432,3 +432,28 @@ body {
   --border: #E1E4E8;
   --hover: #F0F3F7;
 }
+
+/* Spring Glass theme */
+[data-theme="spring-glass"] {
+  --primary: #48C78E;
+  --secondary: #7BD1B9;
+  --background: rgba(255, 255, 255, 0.25);
+  --surface: rgba(255, 255, 255, 0.35);
+  --text: #1F2A31;
+  --text-light: #5F6D75;
+  --border: rgba(255, 255, 255, 0.38);
+  --hover: rgba(255, 255, 255, 0.45);
+}
+
+[data-theme="spring-glass"] .settings-header,
+[data-theme="spring-glass"] .settings-sidebar,
+[data-theme="spring-glass"] .setting-item,
+[data-theme="spring-glass"] .hint {
+  backdrop-filter: saturate(180%) blur(18px);
+  -webkit-backdrop-filter: saturate(180%) blur(18px);
+}
+
+[data-theme="spring-glass"] .sidebar-item.active {
+  background: var(--primary);
+  color: #fff;
+}
