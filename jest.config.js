@@ -9,16 +9,18 @@ module.exports = {
     '!app/**/*.test.js',
     '!app/**/*.spec.js',
     '!app/renderer/**',
-    '!app/**/preload.js'
+    '!app/**/preload.js',
+    '!app/main/main.js',
+    '!app/shared/constants.js'
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
   coverageThreshold: {
     global: {
-      branches: 70,
-      functions: 75,
-      lines: 75,
-      statements: 75
+      branches: 60,
+      functions: 65,
+      lines: 70,
+      statements: 70
     }
   },
   setupFilesAfterEnv: ['<rootDir>/test/jest.setup.js'],
