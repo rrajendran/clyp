@@ -194,26 +194,9 @@ function registerShortcuts() {
   } else {
     console.log('Registered global shortcut:', rawShortcut, '(normalized ->', finalShortcut + ')');
   }
-
-  // Register settings shortcut (accelerator remains platform-specific)
-  const normalizedSettingsShortcut = normalizeAccelerator(settingsShortcut);
-  // Validate settings accelerator
-  const settingsTokens = normalizedSettingsShortcut.split('+').map(t => t.trim()).filter(Boolean);
-  const settingsHasMain = settingsTokens.some(t => !modifierSet.has(t));
-  const settingsToRegister = settingsHasMain ? settingsTokens.join('+') : normalizeAccelerator(process.platform === 'darwin' ? 'Command+,' : 'Control+,');
-  const finalSettingsShortcut = typeof settingsToRegister === 'string' ? settingsToRegister : settingsToRegister.join('+');
-  const settingsRegistered = globalShortcut.register(finalSettingsShortcut, () => {
-    // Only open settings if a window is active
-    if ((mainWindow && !mainWindow.isDestroyed()) || (settingsWindow && !settingsWindow.isDestroyed())) {
-      createSettingsWindow();
-    }
-  });
-
-  if (!settingsRegistered) {
-    console.error('Failed to register settings shortcut:', settingsShortcut, '(attempted ->', finalSettingsShortcut + ')');
-  } else {
-    console.log('Registered settings shortcut (attempted ->', finalSettingsShortcut + ')');
-  }
+  
+  // Note: Settings shortcut (Cmd+, / Ctrl+,) is handled via menu accelerator
+  // and only works when the app has focus, not globally
 }
 
 /**
