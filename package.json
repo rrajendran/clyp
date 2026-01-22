@@ -8,7 +8,9 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
+    "clean": "rm -rf dist",
     "build": "electron-builder",
+    "build:all": "npm run clean && electron-builder --mac --win --linux --publish never",
     "build:mac": "electron-builder --mac",
     "build:win": "electron-builder --win",
     "build:linux": "electron-builder --linux",
@@ -34,13 +36,13 @@
   "build": {
     "appId": "com.clyp.clipboard",
     "productName": "Clyp",
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "rameshchinnu61",
-        "repo": "clyp"
-      }
-    ],
+    "publish": {
+      "provider": "github",
+      "owner": "rameshchinnu61",
+      "repo": "clyp",
+      "publishAutoUpdate": true,
+      "releaseType": "release"
+    },
     "directories": {
       "output": "dist",
       "buildResources": "assets"

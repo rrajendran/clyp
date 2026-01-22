@@ -9,6 +9,7 @@ class StorageManager {
         history: [],
         settings: {
           maxHistorySize: 100,
+          maxContentSizeMB: 5,
           monitoringEnabled: true,
           captureText: true,
           captureRichText: true,
@@ -226,7 +227,36 @@ class StorageManager {
     }
 
     this.store.set('settings', merged);
+    
+    // If maxHistorySize changed, trim history immediately
+    if (newSettings.maxHistorySize !== undefined && newSettings.maxHistorySize !== currentSettings.maxHistorySize) {
+      this.trimHistoryToSize(merged.maxHistorySize);
+    }
+    
     return merged;
+  }
+  
+  /**
+   * Trim history to max size, preserving pinned items
+   */
+  trimHistoryToSize(maxSize) {
+    try {
+      let history = this.getHistory();
+      const pinnedItems = history.filter(item => item.pinned);
+      const unpinnedItems = history.filter(item => !item.pinned);
+      
+      if (unpinnedItems.length > maxSize) {
+        console.log(`Trimming history from ${unpinnedItems.length} to ${maxSize} items`);
+        unpinnedItems.length = maxSize;
+      }
+      
+      const trimmedHistory = [...pinnedItems, ...unpinnedItems];
+      this.store.set('history', trimmedHistory);
+      return trimmedHistory;
+    } catch (error) {
+      console.error('Error trimming history:', error);
+      return this.getHistory();
+    }
   }
 
   /**

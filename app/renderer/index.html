@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Clyp - Clipboard History</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-DTOQO9RWCH3H862BD3CTQkKGOvced/sPMMrO83fURQYnQ2n8JafJWl07kprQKeHkiddIfqJ7gkXJ5SGlxnELV0Xw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <link rel="stylesheet" href="styles.css">
 </head>
 
@@ -66,6 +67,24 @@
         <kbd>Enter</kbd> or <kbd id="copyKey">Cmd</kbd><kbd>C</kbd> Copy
         <kbd>Esc</kbd> Close
       </span>
+    </div>
+  </div>
+
+  <!-- Text Drawer -->
+  <div id="textDrawer" class="text-drawer">
+    <div class="drawer-header">
+      <h2>Full Content</h2>
+      <button class="drawer-close-btn" id="drawerCloseBtn" title="Close drawer">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+    <div class="drawer-content">
+      <pre id="drawerText"></pre>
+    </div>
+    <div class="drawer-footer">
+      <button class="copy-drawer-btn" id="copyDrawerBtn">Copy All</button>
     </div>
   </div>
 

@@ -195,6 +195,24 @@ function setupEventListeners() {
     window.electronAPI.showSettings();
   });
 
+  // Drawer event listeners
+  document.getElementById('drawerCloseBtn').addEventListener('click', closeTextDrawer);
+  document.getElementById('copyDrawerBtn').addEventListener('click', copyDrawerContent);
+  const drawerContent = document.querySelector('.drawer-content');
+  if (drawerContent) {
+    drawerContent.addEventListener('click', () => {
+      copyDrawerContent();
+      closeTextDrawer();
+    });
+  }
+  
+  // Close drawer on Escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && document.getElementById('textDrawer').classList.contains('open')) {
+      closeTextDrawer();
+    }
+  });
+
   // Keyboard navigation
   document.addEventListener('keydown', handleKeyPress);
 
@@ -229,6 +247,7 @@ function setupEventListeners() {
         e.preventDefault();
         const formatted = formatHtmlOrXml(item.content || '');
         await window.electronAPI.copyToClipboard({ html: item.content || '', text: formatted });
+        showCopiedNotification();
       }
     } catch (err) {
       console.error('Error handling copy event:', err);
@@ -290,6 +309,10 @@ function createHistoryItemHTML(item, index) {
     ? `<div class="item-tags">${item.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}</div>`
     : '';
   
+  // Check if content is lengthy. Images should not be marked "lengthy" (no "View Full").
+  const lengthy = item.type !== 'image' && isLengthyContent(item.content);
+  const contentClass = lengthy ? 'lengthy' : '';
+  
   return `
     <div class="history-item ${isSelected ? 'selected' : ''} ${item.pinned ? 'pinned' : ''}" data-index="${index}" data-id="${item.id}">
       <div class="item-header">
@@ -299,24 +322,17 @@ function createHistoryItemHTML(item, index) {
         </div>
         <div class="item-actions">
           <button class="action-btn pin-btn ${item.pinned ? 'pinned' : ''}" data-action="pin" title="${item.pinned ? 'Unpin' : 'Pin'}">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="${item.pinned ? 'currentColor' : 'none'}" xmlns="http://www.w3.org/2000/svg">
-              <path d="M21 10C21 10 18 8 18 5V3H6V5C6 8 3 10 3 10V12H10V21L12 23L14 21V12H21V10Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><path d="M32 32C32 14.3 46.3 0 64 0L320 0c17.7 0 32 14.3 32 32s-14.3 32-32 32l-29.5 0 11.4 148.2c36.7 19.9 65.7 53.2 79.5 94.7l1 3c3.3 9.8 1.6 20.5-4.4 28.8s-15.7 13.3-26 13.3L32 352c-10.3 0-19.9-4.9-26-13.3s-7.7-19.1-4.4-28.8l1-3c13.8-41.5 42.8-74.8 79.5-94.7L93.5 64 64 64C46.3 64 32 49.7 32 32zM160 384l64 0 0 96c0 17.7-14.3 32-32 32s-32-14.3-32-32l0-96z"/></svg>
           </button>
           ${item.pinned ? `<button class="action-btn tag-btn" data-action="tag" title="Manage Tags">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M20.59 13.41L13.42 20.58C13.2346 20.766 13.0132 20.9135 12.7709 21.0101C12.5286 21.1067 12.2719 21.1503 12.015 21.138C11.7581 21.1257 11.5075 21.0575 11.2791 20.9385C11.0507 20.8195 10.8501 20.6528 10.69 20.45L5.29 13.59C5.18106 13.4412 5.10803 13.2706 5.07557 13.0912C5.04311 12.9118 5.05188 12.7281 5.10145 12.5516C5.15102 12.3751 5.2399 12.2103 5.36155 12.0689C5.4832 11.9275 5.63416 11.8132 5.803 11.733L11.743 9.14C11.9022 9.0657 12.0778 9.0657 12.237 9.14L18.177 11.733C18.3458 11.8132 18.4968 11.9275 18.6184 12.0689C18.7401 12.2103 18.829 12.3751 18.8785 12.5516C18.9281 12.7281 18.9369 12.9118 18.9044 13.0912C18.8719 13.2706 18.7989 13.4412 18.69 13.59L20.59 13.41Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M345 39.1L472.8 168.4c52.4 53 52.4 138.2 0 191.2L360.8 472.9c-9.3 9.4-24.5 9.5-33.9 .2s-9.5-24.5-.2-33.9L438.6 325.9c33.9-34.3 33.9-89.4 0-123.7L310.9 72.9c-9.3-9.4-9.2-24.6 .2-33.9s24.6-9.2 33.9 .2zM0 229.5L0 80C0 53.5 21.5 32 48 32l149.5 0c17 0 33.3 6.7 45.3 18.7l168 168c25 25 25 65.5 0 90.5L277.3 442.7c-25 25-65.5 25-90.5 0l-168-168C6.7 262.7 0 246.5 0 229.5zM144 144a32 32 0 1 0 -64 0 32 32 0 1 0 64 0z"/></svg>
           </button>` : ''}
           <button class="action-btn delete-btn" data-action="delete" title="Delete">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M3 6H5H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M8 6V4C8 3.46957 8.21071 2.96086 8.58579 2.58579C8.96086 2.21071 9.46957 2 10 2H14C14.5304 2 15.0391 2.21071 15.4142 2.58579C15.7893 2.96086 16 3.46957 16 4V6M19 6V20C19 20.5304 18.7893 21.0391 18.4142 21.4142C18.0391 21.7893 17.5304 22 17 22H7C6.46957 22 5.96086 21.7893 5.58579 21.4142C5.21071 21.0391 5 20.5304 5 20V6H19Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M135.2 17.7L128 32 32 32C14.3 32 0 46.3 0 64S14.3 96 32 96l384 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-96 0-7.2-14.3C307.4 6.8 296.3 0 284.2 0L163.8 0c-12.1 0-23.2 6.8-28.6 17.7zM416 128L32 128 53.2 467c1.6 25.3 22.6 45 47.9 45l245.8 0c25.3 0 46.3-19.7 47.9-45L416 128z"/></svg>
           </button>
         </div>
       </div>
-      <div class="item-content ${item.type}">
+      <div class="item-content ${item.type} ${contentClass}">
         ${getContentHTML(item)}
       </div>
       <div class="item-footer">
@@ -380,9 +396,15 @@ function attachItemEventListeners() {
   const items = document.querySelectorAll('.history-item');
   
   items.forEach(item => {
-    // Click on item to copy
+    // Click on item to copy 
     item.addEventListener('click', (e) => {
       if (e.target.closest('.action-btn')) return;
+      // Check if clicking on lengthy indicator
+      if (e.target.closest('.item-content.lengthy')) {
+        const index = parseInt(item.dataset.index);
+        openTextDrawer(index);
+        return;
+      }
       const index = parseInt(item.dataset.index);
       copyItem(index);
     });
@@ -497,6 +519,7 @@ async function copyItem(index) {
   }
 
   await window.electronAPI.copyToClipboard(payload);
+  showCopiedNotification();
   window.electronAPI.hideWindow();
 }
 
@@ -790,4 +813,140 @@ async function applyTheme(prefetchedSettings) {
   }
 
   document.documentElement.setAttribute('data-theme', effectiveTheme);
+}
+
+// Show "Copied" notification
+function showCopiedNotification() {
+  const notification = document.createElement('div');
+  notification.className = 'copy-notification';
+  notification.textContent = 'Copied';
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 24px;
+    background: rgba(76, 175, 80, 0.95);
+    color: white;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 10000;
+    animation: slideInRight 0.3s ease-out, fadeOut 0.3s ease-in 1.7s;
+    pointer-events: none;
+  `;
+  
+  document.body.appendChild(notification);
+  
+  setTimeout(() => {
+    notification.remove();
+  }, 2000);
+}
+
+// Text Drawer Functions
+function openTextDrawer(index) {
+  const item = filteredHistory[index];
+  if (!item) return;
+
+  const drawer = document.getElementById('textDrawer');
+  const drawerText = document.getElementById('drawerText');
+  const overlay = document.querySelector('.drawer-overlay') || createOverlay();
+  const itemEl = document.querySelector(`.history-item[data-index="${index}"]`);
+  
+  // Get the content to display
+  let content = '';
+  if (item.type === 'text') {
+    content = item.content || '';
+  } else if (item.type === 'html') {
+    content = formatHtmlOrXml(item.content || '');
+  } else {
+    content = item.content || '';
+  }
+  
+  // Store current content for copy
+  drawerText.textContent = content;
+  drawer.classList.add('open');
+  overlay.classList.add('active');
+
+  // Position drawer and arrow relative to the clicked item
+  requestAnimationFrame(() => {
+    positionDrawer(itemEl);
+  });
+  
+  // Close on overlay click
+  overlay.onclick = closeTextDrawer;
+}
+
+function closeTextDrawer() {
+  const drawer = document.getElementById('textDrawer');
+  const overlay = document.querySelector('.drawer-overlay');
+  
+  drawer.classList.remove('open');
+  if (overlay) {
+    overlay.classList.remove('active');
+  }
+}
+
+function copyDrawerContent() {
+  const drawerText = document.getElementById('drawerText');
+  const content = drawerText.textContent;
+  
+  if (!content) return;
+  
+  window.electronAPI.copyToClipboard(content).then(() => {
+    showCopiedNotification();
+    closeTextDrawer();
+  });
+}
+
+function positionDrawer(anchorEl) {
+  const drawer = document.getElementById('textDrawer');
+  if (!drawer || !anchorEl) return;
+
+  // Prepare for measurement
+  drawer.style.visibility = 'hidden';
+  drawer.classList.add('open');
+
+  const margin = 0;
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  const anchorRect = anchorEl.getBoundingClientRect();
+  const drawerRect = drawer.getBoundingClientRect();
+
+  const left = margin;
+  const arrowSide = 'right';
+
+  let top = anchorRect.top + anchorRect.height / 2 - drawerRect.height / 2;
+  top = Math.max(margin, Math.min(top, viewportHeight - drawerRect.height - margin));
+
+  // Arrow position relative to drawer
+  const anchorMid = anchorRect.top + anchorRect.height / 2;
+  let arrowTop = anchorMid - top;
+  const minTop = 14;
+  const maxTop = drawerRect.height - 14;
+  arrowTop = Math.max(minTop, Math.min(arrowTop, maxTop));
+
+  drawer.style.setProperty('--drawer-top', `${Math.round(top)}px`);
+  drawer.style.setProperty('--drawer-left', `${Math.round(left)}px`);
+  drawer.style.setProperty('--drawer-arrow-top', `${Math.round(arrowTop)}px`);
+  drawer.style.setProperty('--drawer-shift', arrowSide === 'right' ? '8px' : '-8px');
+
+  drawer.classList.toggle('arrow-right', arrowSide === 'right');
+
+  // Reveal after positioning
+  drawer.style.visibility = '';
+}
+
+function createOverlay() {
+  const overlay = document.createElement('div');
+  overlay.className = 'drawer-overlay';
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+// Determine if content is lengthy (more than 300 characters or 5 lines)
+function isLengthyContent(content) {
+  if (!content) return false;
+  const lineCount = (content.match(/\n/g) || []).length + 1;
+  return content.length > 300 || lineCount > 5;
 }

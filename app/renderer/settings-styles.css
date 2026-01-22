@@ -40,6 +40,9 @@ body {
   padding: 24px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .branding {
@@ -58,6 +61,28 @@ body {
   color: var(--text);
 }
 
+/* Header window controls */
+.window-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.icon-btn {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.icon-btn:hover {
+  background: var(--hover);
+  border-color: var(--primary);
+}
+
 /* Settings Content */
 .settings-content {
   flex: 1;
@@ -72,6 +97,27 @@ body {
   border-right: 1px solid var(--border);
   padding: 16px 8px;
   overflow-y: auto;
+  position: relative;
+  z-index: 1;
+}
+
+.settings-sidebar.collapsed {
+  width: 0;
+  padding: 0;
+  border-right: none;
+  overflow: hidden;
+}
+
+/* Resizer between sidebar and main */
+.sidebar-resizer {
+  width: 6px;
+  cursor: col-resize;
+  background: transparent;
+  flex-shrink: 0;
+}
+
+.sidebar-resizer:hover {
+  background: var(--border);
 }
 
 .sidebar-item {

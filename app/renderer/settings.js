@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupEventListeners();
   applyTheme();
   setIconPaths();
+  initSidebarSizing();
 });
 
 // Listen for settings changes from other windows
@@ -56,6 +57,8 @@ function populateSettings() {
   // General
   document.getElementById('startOnBoot').checked = settings.startOnBoot || false;
   document.getElementById('maxHistorySize').value = settings.maxHistorySize || 100;
+  const mcs = typeof settings.maxContentSizeMB === 'number' ? settings.maxContentSizeMB : 5;
+  document.getElementById('maxContentSizeMB').value = mcs;
   document.getElementById('monitoringEnabled').checked = settings.monitoringEnabled !== false;
   document.getElementById('developerTools').checked = settings.developerTools || false;
   document.getElementById('hideDockIcon').checked = settings.hideDockIcon || false;
@@ -101,8 +104,16 @@ function setupEventListeners() {
     window.electronAPI.setStartOnBoot(e.target.checked);
   });
 
-  document.getElementById('maxHistorySize').addEventListener('change', (e) => {
-    updateSetting('maxHistorySize', parseInt(e.target.value));
+  document.getElementById('maxHistorySize').addEventListener('change', async (e) => {
+    const newSize = parseInt(e.target.value);
+    await updateSetting('maxHistorySize', newSize);
+    // Notify that history was trimmed
+    showNotification(`History size updated to ${newSize}`, 'success');
+  });
+
+  document.getElementById('maxContentSizeMB').addEventListener('change', (e) => {
+    const val = Math.max(1, parseInt(e.target.value));
+    updateSetting('maxContentSizeMB', val);
   });
 
   document.getElementById('monitoringEnabled').addEventListener('change', (e) => {
@@ -460,4 +471,46 @@ function showNotification(message, type = 'info') {
     notification.style.animation = 'slideOut 0.3s ease-out';
     setTimeout(() => notification.remove(), 300);
   }, 3000);
+}
+
+// Initialize sidebar resizing
+function initSidebarSizing() {
+  const sidebar = document.getElementById('settingsSidebar');
+  const resizer = document.getElementById('sidebarResizer');
+  if (!sidebar || !resizer) return;
+
+  const minWidth = 180;
+  const maxWidth = 420;
+  let startX = 0;
+  let startWidth = 0;
+  let dragging = false;
+
+  function onMouseMove(e) {
+    if (!dragging) return;
+    const delta = e.clientX - startX;
+    let newWidth = startWidth + delta;
+    newWidth = Math.max(minWidth, Math.min(maxWidth, newWidth));
+    sidebar.style.width = newWidth + 'px';
+  }
+
+  function onMouseUp() {
+    if (!dragging) return;
+    dragging = false;
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
+    // Persist width
+    const w = parseInt(sidebar.style.width || '240', 10);
+    if (!Number.isNaN(w)) {
+      localStorage.setItem('sidebarWidth', String(w));
+    }
+  }
+
+  resizer.addEventListener('mousedown', (e) => {
+    if (sidebar.classList.contains('collapsed')) return;
+    dragging = true;
+    startX = e.clientX;
+    startWidth = parseInt(window.getComputedStyle(sidebar).width, 10);
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  });
 }

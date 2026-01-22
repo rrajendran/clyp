@@ -40,9 +40,11 @@ class TrayManager extends EventEmitter {
       // Build and set context menu
       this.updateMenu();
       
-      // Handle tray click
+      // Handle tray click: show context menu only (do not open main window)
       this.tray.on('click', () => {
-        this.emit('show-history');
+        if (this.tray) {
+          this.tray.popUpContextMenu();
+        }
       });
     } catch (error) {
       console.error('Failed to initialize tray:', error);

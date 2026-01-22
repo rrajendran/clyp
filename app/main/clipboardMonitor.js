@@ -12,9 +12,10 @@ const CLEANUP_INTERVAL = 60000; // Run cleanup every 60 seconds
 const METRICS_REPORT_INTERVAL = 60000; // Report metrics every 60 seconds
 
 class ClipboardMonitor extends EventEmitter {
-  constructor(storageManager) {
+  constructor(storageManager, isDev = false) {
     super();
     this.storageManager = storageManager;
+    this.isDev = isDev;
     this.interval = null;
     this.cleanupInterval = null;
     this.lastHash = null;
@@ -311,11 +312,17 @@ class ClipboardMonitor extends EventEmitter {
 
     // Cache settings call result to avoid repeated lookups
     const settings = this.storageManager.getSettings();
+    const maxBytes = Math.max(0, (settings.maxContentSizeMB || 0) * 1024 * 1024);
     const item = await this.detectClipboardItem();
 
     if (item.type === 'text' && settings.captureText !== false) {
       const text = clipboard.readText();
       if (text) {
+        // Enforce max content size for text
+        if (maxBytes && Buffer.byteLength(text, 'utf8') > maxBytes) {
+          // Skip overly large text to avoid performance issues
+          return;
+        }
         const normalized = this.normalizeText(text);
         const hash = this.hashContent('text:' + normalized);
         if (hash !== this.lastHash) {
@@ -335,6 +342,10 @@ class ClipboardMonitor extends EventEmitter {
       const image = clipboard.readImage();
       if (!image.isEmpty()) {
         const imageData = image.toPNG();
+        // Enforce max content size for images
+        if (maxBytes && imageData.length > maxBytes) {
+          return;
+        }
         // Optimize: Only hash a sample of large images for faster comparison
         const sampleData = imageData.length > IMAGE_HASH_SAMPLE_SIZE 
           ? imageData.slice(0, IMAGE_HASH_SAMPLE_SIZE)
@@ -359,6 +370,10 @@ class ClipboardMonitor extends EventEmitter {
     } else if (item.type === 'html' && settings.captureRichText !== false) {
       const html = clipboard.readHTML();
       if (html) {
+        // Enforce max content size for HTML
+        if (maxBytes && Buffer.byteLength(html, 'utf8') > maxBytes) {
+          return;
+        }
         // Preserve the original HTML content so paste operations reproduce the
         // formatting exactly as copied. For deduplication, compute both a
         // canonical text hash (visible text) and an HTML hash; prefer storing
@@ -416,12 +431,16 @@ class ClipboardMonitor extends EventEmitter {
     }
 
     // Files handled as a final fallback
-    if (item.type === 'file') {
+    if (item.type === 'file' && settings.captureFiles !== false) {
       // Treat generic file blobs as file list entries. Attempt to read
       // textual file path representations; otherwise store as a generic file
       // entry with minimal metadata.
       try {
         const possible = clipboard.readText();
+        // Enforce max content size for file path text if present
+        if (possible && maxBytes && Buffer.byteLength(possible, 'utf8') > maxBytes) {
+          return;
+        }
         const hash = this.hashContent('file:' + possible);
         if (hash !== this.lastHash) {
           this.handleNewContent({
@@ -535,8 +554,8 @@ class ClipboardMonitor extends EventEmitter {
       }
     }
     
-    // Log metrics for monitoring (optional, can be removed in production)
-    if (this._metrics.checksPerformed > 0) {
+    // Log metrics for monitoring (optional, only in development)
+    if (this.isDev && this._metrics.checksPerformed > 0) {
       const hitRate = this._metrics.checksPerformed > 0
         ? ((this._metrics.duplicatesSkipped / this._metrics.checksPerformed) * 100).toFixed(1)
         : '0.0';

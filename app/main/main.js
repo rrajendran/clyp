@@ -11,6 +11,8 @@ let clipboardMonitor = null;
 let storageManager = null;
 let lastAppCopiedContent = null;
 let lastAppCopyTimer = null;
+// Detect development mode: explicit NODE_ENV=development or unpackaged app
+const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
 // Ensure single instance
 const gotTheLock = app.requestSingleInstanceLock();
@@ -50,6 +52,15 @@ function createMainWindow() {
 
   mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
 
+  // Open DevTools automatically in development/unpacked runs
+  if (isDev && mainWindow && mainWindow.webContents) {
+    try {
+      mainWindow.webContents.openDevTools({ mode: 'detach' });
+    } catch (e) {
+      // ignore if not available
+    }
+  }
+
   // Hide window when it loses focus
   mainWindow.on('blur', () => {
     if (!mainWindow.webContents.isDevToolsOpened()) {
@@ -61,8 +72,8 @@ function createMainWindow() {
     mainWindow = null;
   });
 
-  // Position window at cursor or center of screen
-  positionWindowAtCursor();
+  // Position window just below the tray/menu bar icon
+  positionWindowBelowTray(mainWindow);
 
   return mainWindow;
 }
@@ -74,6 +85,11 @@ function createSettingsWindow() {
   if (settingsWindow) {
     settingsWindow.focus();
     return;
+  }
+
+  // Ensure only one window is visible
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.hide();
   }
 
   settingsWindow = new BrowserWindow({
@@ -90,33 +106,62 @@ function createSettingsWindow() {
 
   settingsWindow.loadFile(path.join(__dirname, '../renderer/settings.html'));
 
+  // Position just below the tray/menu bar icon
+  positionWindowBelowTray(settingsWindow);
+
+  // Open DevTools automatically in development/unpacked runs
+  if (isDev && settingsWindow && settingsWindow.webContents) {
+    try {
+      settingsWindow.webContents.openDevTools({ mode: 'detach' });
+    } catch (e) {
+      // ignore
+    }
+  }
+
   settingsWindow.on('closed', () => {
     settingsWindow = null;
+  });
+
+  // Hide settings window when it loses focus (unless DevTools is open)
+  settingsWindow.on('blur', () => {
+    if (settingsWindow && !settingsWindow.webContents.isDevToolsOpened()) {
+      settingsWindow.hide();
+    }
   });
 }
 
 /**
  * Position window at cursor location
  */
-function positionWindowAtCursor() {
-  if (!mainWindow) return;
+function positionWindowBelowTray(targetWindow) {
+  if (!targetWindow) return;
 
   const { screen } = require('electron');
-  const point = screen.getCursorScreenPoint();
-  const display = screen.getDisplayNearestPoint(point);
-  
-  const windowBounds = mainWindow.getBounds();
-  let x = point.x - windowBounds.width / 2;
-  let y = point.y - windowBounds.height / 2;
+  const trayBounds = trayManager && trayManager.tray ? trayManager.tray.getBounds() : null;
+  const display = screen.getPrimaryDisplay();
 
-  // Keep window within screen bounds
+  const windowBounds = targetWindow.getBounds();
+
+  let x;
+  let y;
+
+  if (trayBounds) {
+    // Center align below tray icon
+    x = Math.round(trayBounds.x + (trayBounds.width / 2) - (windowBounds.width / 2));
+    y = Math.round(trayBounds.y + trayBounds.height + 8);
+  } else {
+    // Fallback: top center of primary display
+    x = Math.round(display.bounds.x + (display.bounds.width - windowBounds.width) / 2);
+    y = Math.round(display.bounds.y + 32);
+  }
+
+  // Keep window within display bounds
   const maxX = display.bounds.x + display.bounds.width - windowBounds.width;
   const maxY = display.bounds.y + display.bounds.height - windowBounds.height;
-  
   x = Math.max(display.bounds.x, Math.min(x, maxX));
   y = Math.max(display.bounds.y, Math.min(y, maxY));
 
-  mainWindow.setPosition(Math.round(x), Math.round(y));
+  targetWindow.setPosition(x, y);
 }
 
 /**
@@ -126,8 +171,13 @@ function showMainWindow() {
   if (!mainWindow) {
     createMainWindow();
   }
-  
-  positionWindowAtCursor();
+
+  // Ensure only one window visible
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    settingsWindow.hide();
+  }
+
+  positionWindowBelowTray(mainWindow);
   mainWindow.show();
   mainWindow.focus();
 }
@@ -359,25 +409,25 @@ function initialize() {
 
   console.log('Initializing clipboard monitor...');
   // Initialize clipboard monitor
-  clipboardMonitor = new ClipboardMonitor(storageManager);
+  clipboardMonitor = new ClipboardMonitor(storageManager, isDev);
   clipboardMonitor.on('clipboard-change', (item) => {
     if (mainWindow) {
       mainWindow.webContents.send('history-updated', storageManager.getHistory());
     }
   });
 
-  // Enable monitoring integration (optional - for production monitoring)
+  // Enable monitoring integration (optional - for development/debugging)
   clipboardMonitor.enableMonitoring((metrics) => {
-    // This is where you'd send metrics to a monitoring service
-    // For now, we just log them for demonstration
-    console.log('Clipboard Monitor Performance:', {
-      checks: metrics.checksPerformed,
-      items: metrics.itemsDetected,
-      hitRate: metrics.hitRate,
-      errors: metrics.errors,
-      pollInterval: metrics.pollInterval,
-      powerMode: metrics.powerMode
-    });
+    if (isDev) {
+      console.log('Clipboard Monitor Performance:', {
+        checks: metrics.checksPerformed,
+        items: metrics.itemsDetected,
+        hitRate: metrics.hitRate,
+        errors: metrics.errors,
+        pollInterval: metrics.pollInterval,
+        powerMode: metrics.powerMode
+      });
+    }
   }, 60000); // Report every 60 seconds
 
   // Clean up any existing duplicates
