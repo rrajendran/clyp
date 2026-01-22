@@ -34,6 +34,13 @@
   "build": {
     "appId": "com.clyp.clipboard",
     "productName": "Clyp",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "rameshchinnu61",
+        "repo": "clyp"
+      }
+    ],
     "directories": {
       "output": "dist",
       "buildResources": "assets"
