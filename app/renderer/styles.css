@@ -122,7 +122,7 @@ body {
 
 .search-icon {
   position: absolute;
-  left: 14px; /* place inside the input */
+  left: 40px; /* place inside the input */
   top: 50%;
   transform: translateY(-50%);
   color: var(--text-light);

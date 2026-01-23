@@ -10,10 +10,10 @@
     "dev": "electron . --dev",
     "clean": "rm -rf dist",
     "build": "electron-builder",
-    "build:all": "npm run clean && electron-builder --mac --win --linux --publish never",
     "build:mac": "electron-builder --mac",
     "build:win": "electron-builder --win",
     "build:linux": "electron-builder --linux",
+    "build:all": "npm run clean && electron-builder --mac --win --linux",
     "generate-icons": "node assets/icons/generate-icons-sharp.js",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -28,14 +28,17 @@
   "devDependencies": {
     "electron": "^28.0.0",
     "electron-builder": "^24.9.1",
-    "sharp": "^0.34.5",
-    "js-beautify": "^1.14.8",
     "jest": "^29.7.0",
-    "jest-environment-node": "^29.7.0"
+    "jest-environment-node": "^29.7.0",
+    "js-beautify": "^1.14.8",
+    "sharp": "^0.34.5"
   },
   "build": {
     "appId": "com.clyp.clipboard",
     "productName": "Clyp",
+    "asar": true,
+    "compression": "maximum",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "publish": {
       "provider": "github",
       "owner": "rameshchinnu61",
@@ -56,7 +59,13 @@
     "mac": {
       "category": "public.app-category.productivity",
       "target": [
-        "dmg"
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
       ],
       "icon": "assets/icons/mac/icon.icns"
     },
@@ -68,9 +77,20 @@
     },
     "linux": {
       "target": [
-        "AppImage",
-        "deb",
-        "rpm"
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
       ],
       "icon": "assets/icons/png/512x512.png",
       "category": "Utility",
