@@ -83,8 +83,21 @@ function createMainWindow() {
  */
 function createSettingsWindow() {
   if (settingsWindow) {
-    settingsWindow.focus();
-    return;
+    if (settingsWindow.isDestroyed()) {
+      settingsWindow = null;
+    } else {
+      // Ensure only one window is visible
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.hide();
+      }
+      
+      if (!settingsWindow.isVisible()) {
+        positionWindowBelowTray(settingsWindow);
+        settingsWindow.show();
+      }
+      settingsWindow.focus();
+      return;
+    }
   }
 
   // Ensure only one window is visible
