@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupEventListeners();
   applyTheme();
   setIconPaths();
+  setAppVersion();
   initSidebarSizing();
 });
 
@@ -79,6 +80,20 @@ function populateSettings() {
 
   // Shortcuts
   document.getElementById('shortcut').value = settings.shortcut || getDefaultShortcut();
+}
+
+// Set app version in About section
+async function setAppVersion() {
+  try {
+    const version = await window.electronAPI.getAppVersion();
+    const versionEl = document.querySelector('.about-content .version');
+    if (versionEl && version) {
+      versionEl.textContent = `Version ${version}`;
+    }
+  } catch (error) {
+    // Keep default text on failure
+    console.error('Failed to set app version:', error);
+  }
 }
 
 // Get default shortcut for platform
@@ -435,14 +450,51 @@ function setupAboutButtons() {
 // Check for updates
 async function checkForUpdates() {
   try {
-    const updateAvailable = await window.electronAPI.checkForUpdates();
-    if (updateAvailable) {
-      showNotification('A new update is available!', 'info');
+    const updateBtn = document.getElementById('checkUpdatesBtn');
+    if (updateBtn) {
+      updateBtn.disabled = true;
+      updateBtn.textContent = 'Checking...';
+    }
+    
+    const result = await window.electronAPI.checkForUpdates();
+    
+    if (updateBtn) {
+      updateBtn.disabled = false;
+      updateBtn.textContent = 'Check for Updates';
+    }
+    
+    if (result.available) {
+      const message = `Version ${result.version} is available!\n\nWould you like to download and install it now?`;
+      if (confirm(message)) {
+        await downloadAndInstallUpdate(result.version);
+      }
     } else {
       showNotification('You are using the latest version.', 'success');
     }
   } catch (error) {
-    showNotification('Failed to check for updates.', 'error');
+    if (document.getElementById('checkUpdatesBtn')) {
+      document.getElementById('checkUpdatesBtn').disabled = false;
+      document.getElementById('checkUpdatesBtn').textContent = 'Check for Updates';
+    }
+    showNotification('Failed to check for updates: ' + (error.message || 'Unknown error'), 'error');
+  }
+}
+
+// Download and install update
+async function downloadAndInstallUpdate(version) {
+  try {
+    showNotification(`Downloading version ${version}...`, 'info');
+    
+    const result = await window.electronAPI.downloadUpdate();
+
+    if (result && result.success) {
+      showNotification('Update downloaded to Downloads. Opening installer...', 'success');
+      return;
+    }
+
+    showNotification('Failed to download update: ' + ((result && result.error) || 'Unknown error'), 'error');
+  } catch (error) {
+    showNotification('Failed to download update: ' + (error.message || 'Unknown error'), 'error');
   }
 }
 

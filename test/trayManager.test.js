@@ -28,6 +28,7 @@ describe('TrayManager', () => {
     mockTrayInstance = {
       setToolTip: jest.fn(),
       setContextMenu: jest.fn(),
+      popUpContextMenu: jest.fn(),
       on: jest.fn(),
       destroy: jest.fn()
     };
@@ -126,17 +127,14 @@ describe('TrayManager', () => {
   });
 
   describe('event handling', () => {
-    it('should emit show-history event on click', () => {
+    it('should call popUpContextMenu on tray click', () => {
       const clickHandler = mockTrayInstance.on.mock.calls.find(
         call => call[0] === 'click'
       )[1];
       
-      const showListener = jest.fn();
-      trayManager.on('show-history', showListener);
-      
       clickHandler();
       
-      expect(showListener).toHaveBeenCalled();
+      expect(mockTrayInstance.popUpContextMenu).toHaveBeenCalled();
     });
 
     it('should emit show-settings when settings clicked', () => {

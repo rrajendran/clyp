@@ -1,5 +1,8 @@
-const { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeImage } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeImage, shell, dialog } = require('electron');
+const fs = require('fs');
+const https = require('https');
 const path = require('path');
+const { autoUpdater } = require('electron-updater');
 const TrayManager = require('./tray');
 const ClipboardMonitor = require('./clipboardMonitor');
 const StorageManager = require('../shared/storage');
@@ -13,6 +16,51 @@ let lastAppCopiedContent = null;
 let lastAppCopyTimer = null;
 // Detect development mode: explicit NODE_ENV=development or unpackaged app
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+
+// Configure auto-updater
+autoUpdater.autoDownload = false;
+autoUpdater.autoInstallOnAppQuit = true;
+autoUpdater.logger = console;
+
+// Force dev update config for testing
+if (isDev) {
+  autoUpdater.forceDevUpdateConfig = true;
+  autoUpdater.updateConfigPath = path.join(__dirname, '../../dev-app-update.yml');
+  // Allow unsigned builds in dev mode
+  process.env.ELECTRON_UPDATER_ALLOW_DOWNGRADE = 'true';
+}
+
+// Set feed URL explicitly
+autoUpdater.setFeedURL({
+  provider: 'github',
+  owner: 'rrajendran',
+  repo: 'clyp'
+});
+
+// Auto-updater event listeners
+autoUpdater.on('checking-for-update', () => {
+  console.log('Checking for update...');
+});
+
+autoUpdater.on('update-available', (info) => {
+  console.log('Update available:', info.version);
+});
+
+autoUpdater.on('update-not-available', (info) => {
+  console.log('Update not available. Current version:', info.version);
+});
+
+autoUpdater.on('error', (err) => {
+  console.error('Update error:', err);
+});
+
+autoUpdater.on('download-progress', (progressObj) => {
+  console.log(`Download progress: ${Math.round(progressObj.percent)}%`);
+});
+
+autoUpdater.on('update-downloaded', (info) => {
+  console.log('Update downloaded:', info.version);
+});
 
 // Ensure single instance
 const gotTheLock = app.requestSingleInstanceLock();
@@ -175,6 +223,85 @@ function positionWindowBelowTray(targetWindow) {
   y = Math.max(display.bounds.y, Math.min(y, maxY));
 
   targetWindow.setPosition(x, y);
+}
+
+/**
+ * Download file with basic redirect handling
+ */
+function downloadFile(url, destination) {
+  return new Promise((resolve, reject) => {
+    const file = fs.createWriteStream(destination);
+
+    const handleResponse = (response) => {
+      if (response.statusCode && response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+        // Follow redirects
+        const redirectUrl = response.headers.location;
+        response.destroy();
+        https.get(redirectUrl, handleResponse).on('error', reject);
+        return;
+      }
+
+      if (response.statusCode && response.statusCode >= 400) {
+        reject(new Error(`Failed to download. Status code: ${response.statusCode}`));
+        return;
+      }
+
+      response.pipe(file);
+      file.on('finish', () => {
+        file.close(() => resolve());
+      });
+    };
+
+    https.get(url, handleResponse).on('error', (err) => {
+      fs.unlink(destination, () => reject(err));
+    });
+  });
+}
+
+// Select appropriate update asset and download to Downloads folder
+async function downloadUpdateAsset(updateInfo) {
+  if (!updateInfo || !updateInfo.files || updateInfo.files.length === 0) {
+    throw new Error('No update files available');
+  }
+
+  const arch = process.arch === 'arm64' ? 'arm64' : 'x64';
+  const preferOrder = ['.dmg', '.zip'];
+
+  let fileEntry = null;
+  for (const ext of preferOrder) {
+    fileEntry = updateInfo.files.find(f => f.url && f.url.includes(`-mac-${arch}`) && f.url.endsWith(ext));
+    if (fileEntry) break;
+  }
+  if (!fileEntry) {
+    for (const ext of preferOrder) {
+      fileEntry = updateInfo.files.find(f => f.url && f.url.endsWith(ext));
+      if (fileEntry) break;
+    }
+  }
+  if (!fileEntry) fileEntry = updateInfo.files[0];
+  if (!fileEntry) throw new Error('No downloadable file found for update');
+
+  const fileName = fileEntry.url || fileEntry.name || fileEntry.path;
+  if (!fileName) throw new Error('No file name available for update asset');
+
+  let downloadUrl;
+  try {
+    downloadUrl = new URL(fileName).toString();
+  } catch (e) {
+    const owner = 'rrajendran';
+    const repo = 'clyp';
+    downloadUrl = `https://github.com/${owner}/${repo}/releases/download/v${updateInfo.version}/${fileName}`;
+  }
+
+  const downloadsDir = app.getPath('downloads');
+  const filename = path.basename(fileName);
+  const destination = path.join(downloadsDir, filename);
+
+  await downloadFile(downloadUrl, destination);
+  console.log('Update downloaded to', destination);
+  await shell.openPath(destination);
+
+  return { success: true, path: destination };
 }
 
 /**
@@ -467,6 +594,13 @@ function initialize() {
   }
   
   console.log('Initialization complete!');
+  
+  // Check for updates on startup (non-dev builds only) with prompt
+  if (!isDev) {
+    setTimeout(() => {
+      checkForUpdatesAndPrompt();
+    }, 5000); // Wait 5 seconds after startup
+  }
 }
 
 // App lifecycle events
@@ -519,6 +653,43 @@ app.on('will-quit', () => {
     clipboardMonitor.stop();
   }
 });
+
+// Prompted update check used on startup
+async function checkForUpdatesAndPrompt() {
+  try {
+    const result = await autoUpdater.checkForUpdates();
+    if (result && result.updateInfo) {
+      const currentVersion = app.getVersion();
+      const latestVersion = result.updateInfo.version;
+      if (currentVersion !== latestVersion) {
+        const { response } = await dialog.showMessageBox({
+          type: 'info',
+          buttons: ['Download', 'Later'],
+          defaultId: 0,
+          cancelId: 1,
+          title: 'Update Available',
+          message: `Version ${latestVersion} is available.`,
+          detail: 'Download the installer now? It will be saved to Downloads and opened for installation.',
+          noLink: true
+        });
+
+        if (response === 0) {
+          const downloadResult = await downloadUpdateAsset(result.updateInfo);
+          if (!downloadResult.success) {
+            await dialog.showMessageBox({
+              type: 'error',
+              buttons: ['OK'],
+              message: 'Failed to download update.',
+              detail: downloadResult.error || 'Unknown error'
+            });
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.log('Auto-update check failed:', error.message || error);
+  }
+}
 
 // IPC handlers
 ipcMain.handle('get-history', () => {
@@ -816,12 +987,63 @@ ipcMain.handle('open-external', (event, url) => {
   return true;
 });
 
+ipcMain.handle('get-app-version', () => {
+  return app.getVersion();
+});
+
 ipcMain.handle('check-for-updates', async () => {
-  // Placeholder for update checking logic
-  // In a real app, you'd use electron-updater or similar
-  console.log('Checking for updates...');
-  // For now, always return false (no updates)
-  return false;
+  try {
+    console.log('Checking for updates...');
+    console.log('Current version:', app.getVersion());
+    console.log('Is dev mode:', isDev);
+    console.log('Feed URL:', autoUpdater.getFeedURL());
+    
+    const result = await autoUpdater.checkForUpdates();
+    console.log('Update check result:', result);
+    
+    if (result && result.updateInfo) {
+      const currentVersion = app.getVersion();
+      const latestVersion = result.updateInfo.version;
+      console.log(`Current: ${currentVersion}, Latest: ${latestVersion}`);
+      
+      if (currentVersion !== latestVersion) {
+        return {
+          available: true,
+          version: latestVersion,
+          releaseNotes: result.updateInfo.releaseNotes || '',
+          releaseDate: result.updateInfo.releaseDate || ''
+        };
+      }
+    }
+    return { available: false };
+  } catch (error) {
+    console.error('Update check failed:', error.message);
+    console.error('Full error:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('download-update', async () => {
+  try {
+    console.log('Starting update download...');
+    const result = await autoUpdater.checkForUpdates();
+    if (!result || !result.updateInfo) {
+      throw new Error('No update info available');
+    }
+
+    return await downloadUpdateAsset(result.updateInfo);
+  } catch (error) {
+    console.error('Update download failed:', error);
+    return { success: false, error: error.message || 'Unknown error' };
+  }
+});
+
+ipcMain.handle('install-update', () => {
+  console.log('Installing update and restarting...');
+  // setImmediate ensures all windows are closed properly before quitting
+  setImmediate(() => {
+    autoUpdater.quitAndInstall(true, true);
+  });
 });
 
 ipcMain.handle('set-start-on-boot', (event, enabled) => {

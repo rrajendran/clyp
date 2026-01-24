@@ -34,6 +34,7 @@ const mockApp = {
   setLoginItemSettings: jest.fn(),
   getLoginItemSettings: jest.fn(() => ({ openAtLogin: false })),
   relaunch: jest.fn(),
+  getVersion: jest.fn(() => '1.0.0'),
   dock: {
     hide: jest.fn(),
     show: jest.fn()
@@ -44,6 +45,7 @@ const mockTray = jest.fn(function() {
   return {
     setToolTip: jest.fn(),
     setContextMenu: jest.fn(),
+    popUpContextMenu: jest.fn(),
     on: jest.fn(),
     destroy: jest.fn()
   };

@@ -33,6 +33,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // External operations
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+  downloadUpdate: () => ipcRenderer.invoke('download-update'),
+  installUpdate: () => ipcRenderer.invoke('install-update'),
+  getAppVersion: () => ipcRenderer.invoke('get-app-version'),
   
   // Event listeners
   onHistoryUpdated: (callback) => {
