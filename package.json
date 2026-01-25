@@ -1,6 +1,6 @@
 {
   "name": "clyp",
-  "version": "1.0.2",
+  "version": "1.0.1",
   "description": "Fast, Private, Cross-Platform Clipboard Manager",
   "main": "app/main/main.js",
   "author": "Clyp rameshchinnu61@gmail.com",

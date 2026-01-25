@@ -401,11 +401,13 @@ function attachItemEventListeners() {
       if (e.target.closest('.action-btn')) return;
       // Check if clicking on lengthy indicator
       if (e.target.closest('.item-content.lengthy')) {
-        const index = parseInt(item.dataset.index);
+        const id = item.dataset.id;
+        const index = filteredHistory.findIndex(h => h.id === id);
         openTextDrawer(index);
         return;
       }
-      const index = parseInt(item.dataset.index);
+      const id = item.dataset.id;
+      const index = filteredHistory.findIndex(h => h.id === id);
       copyItem(index);
     });
 
@@ -893,7 +895,7 @@ function copyDrawerContent() {
   
   if (!content) return;
   
-  window.electronAPI.copyToClipboard(content).then(() => {
+  window.electronAPI.copyToClipboard({ text: content }).then(() => {
     showCopiedNotification();
     closeTextDrawer();
   });
