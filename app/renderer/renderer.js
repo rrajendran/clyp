@@ -397,7 +397,7 @@ function attachItemEventListeners() {
   
   items.forEach(item => {
     // Click on item to copy 
-    item.addEventListener('click', (e) => {
+    item.addEventListener('click', async (e) => {
       if (e.target.closest('.action-btn')) return;
       // Check if clicking on lengthy indicator
       if (e.target.closest('.item-content.lengthy')) {
@@ -408,7 +408,7 @@ function attachItemEventListeners() {
       }
       const id = item.dataset.id;
       const index = filteredHistory.findIndex(h => h.id === id);
-      copyItem(index);
+      await copyItem(index);
     });
 
     // Action buttons

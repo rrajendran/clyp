@@ -30,12 +30,25 @@ if (isDev) {
   process.env.ELECTRON_UPDATER_ALLOW_DOWNGRADE = 'true';
 }
 
-// Set feed URL explicitly
-autoUpdater.setFeedURL({
+// Set feed URL explicitly with correct channel based on architecture
+const channel = process.arch === 'arm64' ? 'latest-arm64' : 'latest';
+autoUpdater.channel = channel;
+
+// Configure provider options
+const providerOptions = {
   provider: 'github',
   owner: 'rrajendran',
-  repo: 'clyp'
-});
+  repo: 'clyp',
+  channel: channel,
+  private: false  // Set to true if repo is private and using GH_TOKEN
+};
+
+// Add token if available (for private repos or rate limiting)
+if (process.env.GH_TOKEN) {
+  providerOptions.token = process.env.GH_TOKEN;
+}
+
+autoUpdater.setFeedURL(providerOptions);
 
 // Auto-updater event listeners
 autoUpdater.on('checking-for-update', () => {
@@ -265,31 +278,46 @@ async function downloadUpdateAsset(updateInfo) {
   }
 
   const arch = process.arch === 'arm64' ? 'arm64' : 'x64';
+  console.log('System architecture:', process.arch, '-> Looking for:', arch);
+  
   const preferOrder = ['.dmg', '.zip'];
-
   let fileEntry = null;
+
+  // arm64: Look for files containing '-arm64'
+  // x64: Look for files NOT containing '-arm64'
   for (const ext of preferOrder) {
-    fileEntry = updateInfo.files.find(f => f.url && f.url.includes(`-mac-${arch}`) && f.url.endsWith(ext));
+    fileEntry = updateInfo.files.find(f => {
+      const fileName = f.url || f.name || f.path || '';
+      if (!fileName.endsWith(ext)) return false;
+      
+      if (arch === 'arm64') {
+        return fileName.includes('-arm64');
+      } else {
+        // x64: must NOT contain '-arm64'
+        return !fileName.includes('-arm64');
+      }
+    });
     if (fileEntry) break;
   }
+
   if (!fileEntry) {
-    for (const ext of preferOrder) {
-      fileEntry = updateInfo.files.find(f => f.url && f.url.endsWith(ext));
-      if (fileEntry) break;
-    }
+    const availableFiles = updateInfo.files.map(f => f.url || f.name || f.path).join(', ');
+    throw new Error(`No ${arch} installer found. Available files: ${availableFiles}. Please download manually from GitHub releases.`);
   }
-  if (!fileEntry) fileEntry = updateInfo.files[0];
-  if (!fileEntry) throw new Error('No downloadable file found for update');
 
   const fileName = fileEntry.url || fileEntry.name || fileEntry.path;
   if (!fileName) throw new Error('No file name available for update asset');
+  
+  console.log('Selected installer:', fileName);
 
   let downloadUrl;
   try {
     downloadUrl = new URL(fileName).toString();
   } catch (e) {
-    const owner = 'rrajendran';
-    const repo = 'clyp';
+    const packageJson = require('../../package.json');
+    const publishConfig = packageJson.build?.publish || {};
+    const owner = publishConfig.owner || 'rrajendran';
+    const repo = publishConfig.repo || 'clyp';
     downloadUrl = `https://github.com/${owner}/${repo}/releases/download/v${updateInfo.version}/${fileName}`;
   }
 
