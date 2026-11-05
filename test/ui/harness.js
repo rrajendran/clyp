@@ -11,7 +11,7 @@ function sampleHistory() {
     { id: '2', timestamp: now - 1e3, type: 'text', content: 'newest text', preview: 'newest text', pinned: false, tags: ['<b>x</b>'] },
     { id: '3', timestamp: now - 7200e3, type: 'text', content: 'pinned text', preview: 'pinned text', pinned: true, tags: [] },
     { id: '4', timestamp: now - 5e3, type: 'html', content: '<p onclick="x()">Hi <script>alert(1)</script><img src=x onerror="y()"><a href="javascript:z()">l</a></p>', preview: 'Hi', pinned: false, tags: [] },
-    { id: '5', timestamp: now - 9e3, type: 'image', content: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', preview: 'Image (1x1)', pinned: false, tags: [] },
+    { id: '5', timestamp: now - 9e3, type: 'image', content: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', preview: 'Image (640x480)', size: { width: 640, height: 480 }, pinned: false, tags: [] },
     { id: '6', timestamp: now - 9e3, type: 'text', content: 'line\n'.repeat(10), preview: 'line line', pinned: false, tags: [] },
   ];
 }

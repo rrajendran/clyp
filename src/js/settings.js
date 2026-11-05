@@ -166,6 +166,7 @@ function navigate(target) {
 
   const app = document.getElementById('app');
   app.dataset.view = group === 'clipboard' ? 'clipboard' : 'settings';
+  if (group !== 'clipboard') window.clypView.closeInspector();
 
   document.querySelectorAll('.sidebar-item').forEach((item) => {
     const on = item.dataset.target === target;

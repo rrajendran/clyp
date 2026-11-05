@@ -51,6 +51,7 @@
         </div>
       </header>
 
+      <div class="content-row">
       <div class="scroller" id="scroller">
         <div class="canvas" id="canvas">
 
@@ -191,21 +192,32 @@
           </section>
         </div>
       </div>
+
+      <!-- Inspector: full text / image of the clicked clipboard item -->
+      <aside class="inspector" id="inspector" data-open="false" aria-hidden="true" aria-label="Item inspector">
+        <header class="inspector-header">
+          <div class="inspector-title">
+            <h2 id="inspectorType">Text</h2>
+            <span class="inspector-sub" id="inspectorSub"></span>
+          </div>
+          <button class="icon-btn" id="inspectorClose" title="Close (Esc)" aria-label="Close inspector">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </header>
+        <div class="inspector-meta">
+          <span id="inspectorWhen"></span>
+          <span class="item-tags" id="inspectorTags"></span>
+        </div>
+        <div class="inspector-body selectable" id="inspectorBody" tabindex="0"></div>
+        <footer class="inspector-footer">
+          <button class="btn primary" id="inspectorCopy">Copy</button>
+          <button class="btn" id="inspectorPin">Pin</button>
+          <button class="btn danger" id="inspectorDelete">Delete</button>
+        </footer>
+      </aside>
+      </div>
     </main>
   </div>
-
-  <!-- Full-content sheet (shared with the popup) -->
-  <div class="drawer-overlay" id="drawerOverlay"></div>
-  <section id="textDrawer" class="text-drawer" aria-label="Full content">
-    <div class="drawer-header">
-      <h2>Full Content</h2>
-      <button class="icon-btn" id="drawerCloseBtn" title="Close" aria-label="Close">
-        <svg class="icon" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
-      </button>
-    </div>
-    <div class="drawer-content"><pre id="drawerText"></pre></div>
-    <div class="drawer-footer"><button class="btn primary" id="copyDrawerBtn">Copy All</button></div>
-  </section>
 
   <script src="js/renderer.js"></script>
   <script src="js/settings.js"></script>

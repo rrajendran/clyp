@@ -13,14 +13,14 @@ npm install
 npm run dev                # tauri dev (debug build, runs the app)
 npm run build              # tauri build (installers for the host OS)
 npm test                   # UI tests (jsdom, test/ui) + Rust unit tests
-npm run test:ui            # UI tests only
+npm run test:ui            # UI tests only (scripts/run-ui-tests.js; avoids `node --test` globs, which need Node 21+)
 cargo test --manifest-path src-tauri/Cargo.toml -- --ignored live_github --nocapture   # opt-in: real GitHub update check
 cargo test --manifest-path src-tauri/Cargo.toml storage   # filter by name
 npm run generate-icons     # regenerate all icons (app icon from assets/clyp-icon.png, tray glyph from src-tauri/icons/tray.svg)
 ./release.sh <version|patch|minor|major>   # bumps package.json, commits, tags vX.Y.Z, pushes main + tag
 ```
 
-Requires Node, Rust (stable) and the Tauri platform prerequisites (Linux: webkit2gtk-4.1, libayatana-appindicator3). Releases are built by `.github/workflows/release.yml` (tauri-action) on a `v*` tag. The app version comes from `package.json` (`tauri.conf.json` points at it). Updates are a GitHub-releases check that opens the installer download (`updater.rs`); there is no in-place self-update.
+Requires Node, Rust (stable) and the Tauri platform prerequisites (Linux: webkit2gtk-4.1, libayatana-appindicator3). CI (`.github/workflows/ci.yml`) runs the UI tests on Node 20/22 and `cargo test` on Linux/macOS/Windows. Releases are built by `.github/workflows/release.yml` (tauri-action) on a `v*` tag. The app version comes from `package.json` (`tauri.conf.json` points at it). Updates are a GitHub-releases check that opens the installer download (`updater.rs`); there is no in-place self-update.
 
 ## Architecture
 

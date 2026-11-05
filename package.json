@@ -15,7 +15,7 @@
     "test": "npm run test:ui && cargo test --manifest-path src-tauri/Cargo.toml",
     "tauri": "tauri",
     "generate-icons": "./scripts/generate-icons.sh",
-    "test:ui": "node --test \"test/ui/*.test.js\""
+    "test:ui": "node scripts/run-ui-tests.js"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.9.0",
