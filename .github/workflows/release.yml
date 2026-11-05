@@ -123,24 +123,34 @@ jobs:
           releaseDraft: true
           args: ${{ matrix.args }}
 
+      # Verify what users actually download: mount the DMG and inspect the app
+      # inside it. (Building with --bundles dmg leaves no standalone Clyp.app.)
       - name: Verify macOS signature
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          APP=$(find src-tauri/target -type d -name 'Clyp.app' -path '*bundle/macos*' | head -1)
-          if [ -z "$APP" ]; then echo "::error::Clyp.app not found"; exit 1; fi
-          echo "Checking $APP (mode: $CLYP_SIGNING)"
+          DMG=$(find src-tauri/target -type f -name '*.dmg' -path '*bundle/dmg*' | head -1)
+          if [ -z "$DMG" ]; then echo "::error::No .dmg found"; exit 1; fi
+          MNT=$(mktemp -d)
+          hdiutil attach -nobrowse -readonly -mountpoint "$MNT" "$DMG" > /dev/null
+          trap 'hdiutil detach "$MNT" -force > /dev/null 2>&1 || true' EXIT
+          APP="$MNT/Clyp.app"
+          if [ ! -d "$APP" ]; then echo "::error::Clyp.app not found inside $DMG"; ls "$MNT"; exit 1; fi
+          echo "Checking $APP from $DMG (mode: $CLYP_SIGNING)"
           codesign --verify --deep --strict --verbose=2 "$APP"
-          codesign -dv "$APP" 2>&1 | grep -E "Signature|Authority|TeamIdentifier|flags" || true
+          # Capture first: `grep -q` closing the pipe early would make codesign
+          # fail under pipefail.
+          INFO=$(codesign -dv "$APP" 2>&1)
+          echo "$INFO" | grep -E "Signature|Authority|TeamIdentifier|flags" || true
           if [ "$CLYP_SIGNING" = "developer-id" ]; then
-            codesign -dv "$APP" 2>&1 | grep -q "Authority=Developer ID Application" \
+            grep -q "Authority=Developer ID Application" <<< "$INFO" \
               || { echo "::error::App is not signed with a Developer ID Application certificate"; exit 1; }
             if [ "$CLYP_NOTARIZE" = "true" ]; then
               xcrun stapler validate "$APP"
               spctl --assess --type execute --verbose=2 "$APP"
             fi
           else
-            codesign -dv "$APP" 2>&1 | grep -q "Signature=adhoc" \
+            grep -q "Signature=adhoc" <<< "$INFO" \
               || { echo "::error::Expected an ad-hoc signature"; exit 1; }
           fi
 
