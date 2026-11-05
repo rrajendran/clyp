@@ -52,12 +52,104 @@ jobs:
       - name: Rust tests
         run: cargo test --manifest-path src-tauri/Cargo.toml
 
-      - name: Build and publish release assets
+      # macOS signing. With the Apple secrets present the app is signed with a
+      # Developer ID certificate and notarized, so Gatekeeper opens it without
+      # warnings. Without them it is ad-hoc signed ("-"): the bundle is still
+      # sealed (so macOS reports "unidentified developer", which can be
+      # overridden, rather than "damaged"), but it is NOT trusted.
+      #
+      # Secrets (repo Settings > Secrets and variables > Actions):
+      #   APPLE_CERTIFICATE           base64 of the Developer ID Application .p12
+      #   APPLE_CERTIFICATE_PASSWORD  password of that .p12
+      #   APPLE_SIGNING_IDENTITY      e.g. "Developer ID Application: Name (TEAMID)"
+      #   APPLE_ID                    Apple ID used for notarization
+      #   APPLE_PASSWORD              app-specific password for that Apple ID
+      #   APPLE_TEAM_ID               team id, e.g. 8DS3387949
+      - name: Configure macOS signing
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          # Only export what is actually set: the bundler treats an empty
+          # variable as "configured" and would then fail.
+          if [ -n "$APPLE_CERTIFICATE" ] && [ -n "$APPLE_CERTIFICATE_PASSWORD" ] && [ -n "$APPLE_SIGNING_IDENTITY" ]; then
+            {
+              echo "APPLE_CERTIFICATE<<__CLYP_CERT__"
+              echo "$APPLE_CERTIFICATE"
+              echo "__CLYP_CERT__"
+              echo "APPLE_CERTIFICATE_PASSWORD=$APPLE_CERTIFICATE_PASSWORD"
+              echo "APPLE_SIGNING_IDENTITY=$APPLE_SIGNING_IDENTITY"
+              echo "CLYP_SIGNING=developer-id"
+            } >> "$GITHUB_ENV"
+            if [ -n "$APPLE_ID" ] && [ -n "$APPLE_PASSWORD" ] && [ -n "$APPLE_TEAM_ID" ]; then
+              {
+                echo "APPLE_ID=$APPLE_ID"
+                echo "APPLE_PASSWORD=$APPLE_PASSWORD"
+                echo "APPLE_TEAM_ID=$APPLE_TEAM_ID"
+                echo "CLYP_NOTARIZE=true"
+              } >> "$GITHUB_ENV"
+              echo "Signing with Developer ID and notarizing."
+            else
+              echo "::warning::Developer ID certificate found but notarization secrets (APPLE_ID, APPLE_PASSWORD, APPLE_TEAM_ID) are missing: the app is signed but NOT notarized."
+            fi
+          elif [ -n "$APPLE_CERTIFICATE$APPLE_CERTIFICATE_PASSWORD$APPLE_SIGNING_IDENTITY" ]; then
+            # Some, but not all, of the certificate secrets: that is a setup
+            # mistake. Fail instead of silently shipping an unsigned app.
+            echo "::error::Incomplete signing setup: APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD and APPLE_SIGNING_IDENTITY must all be set (or none, for ad-hoc signing)."
+            exit 1
+          else
+            {
+              echo "APPLE_SIGNING_IDENTITY=-"
+              echo "CLYP_SIGNING=adhoc"
+            } >> "$GITHUB_ENV"
+            echo "::warning::No Apple signing secrets: building with an ad-hoc signature. macOS will warn on first open until a Developer ID certificate is configured."
+          fi
+
+      # Draft first: the release only becomes public (and visible to the
+      # in-app update check) after every platform built and verified.
+      - name: Build and upload release assets
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.CLYP_SECRET }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: Clyp ${{ github.ref_name }}
-          releaseDraft: false
+          releaseDraft: true
           args: ${{ matrix.args }}
+
+      - name: Verify macOS signature
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          APP=$(find src-tauri/target -type d -name 'Clyp.app' -path '*bundle/macos*' | head -1)
+          if [ -z "$APP" ]; then echo "::error::Clyp.app not found"; exit 1; fi
+          echo "Checking $APP (mode: $CLYP_SIGNING)"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          codesign -dv "$APP" 2>&1 | grep -E "Signature|Authority|TeamIdentifier|flags" || true
+          if [ "$CLYP_SIGNING" = "developer-id" ]; then
+            codesign -dv "$APP" 2>&1 | grep -q "Authority=Developer ID Application" \
+              || { echo "::error::App is not signed with a Developer ID Application certificate"; exit 1; }
+            if [ "$CLYP_NOTARIZE" = "true" ]; then
+              xcrun stapler validate "$APP"
+              spctl --assess --type execute --verbose=2 "$APP"
+            fi
+          else
+            codesign -dv "$APP" 2>&1 | grep -q "Signature=adhoc" \
+              || { echo "::error::Expected an ad-hoc signature"; exit 1; }
+          fi
+
+  publish:
+    name: Publish release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish the draft release
+        env:
+          GH_TOKEN: ${{ secrets.CLYP_SECRET }}
+        run: gh release edit "${{ github.ref_name }}" --repo "${{ github.repository }}" --draft=false --latest

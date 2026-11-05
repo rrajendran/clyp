@@ -22,6 +22,14 @@ npm run generate-icons     # regenerate all icons (app icon from assets/clyp-ico
 
 Requires Node, Rust (stable) and the Tauri platform prerequisites (Linux: webkit2gtk-4.1, libayatana-appindicator3). CI (`.github/workflows/ci.yml`) runs the UI tests on Node 20/22 and `cargo test` on Linux/macOS/Windows. Releases are built by `.github/workflows/release.yml` (tauri-action) on a `v*` tag. The app version comes from `package.json` (`tauri.conf.json` points at it). Updates are a GitHub-releases check that opens the installer download (`updater.rs`); there is no in-place self-update.
 
+## Releasing & macOS signing
+
+`./release.sh patch` (run from an up-to-date `main`) tags `vX.Y.Z`; the tag triggers `release.yml`. Each platform builds and uploads to a **draft** release; the `publish` job makes it public only when every build (and the macOS signature check) passed.
+
+- **Without Apple secrets** the macOS build is ad-hoc signed (`APPLE_SIGNING_IDENTITY=-`). The bundle is sealed, so macOS says "unidentified developer" (override in System Settings → Privacy & Security) instead of "damaged". Not trusted by Gatekeeper.
+- **With secrets** it is signed with a Developer ID Application certificate and notarized. Set all of: `APPLE_CERTIFICATE` (base64 `.p12`), `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY` (e.g. `Developer ID Application: Name (TEAMID)`), and for notarization `APPLE_ID`, `APPLE_PASSWORD` (app-specific), `APPLE_TEAM_ID`. Setting only some of the certificate secrets fails the build on purpose.
+- Local ad-hoc test: `APPLE_SIGNING_IDENTITY=- npx tauri build --bundles app`.
+
 ## Architecture
 
 - **`src-tauri/src/`** – Rust backend.
