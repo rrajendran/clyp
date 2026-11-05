@@ -1,0 +1,272 @@
+/* Clyp – design tokens
+ *
+ * One neutral/blue palette, three appearances (light, dark, system), and
+ * per-platform adjustments so the app reads as native on each OS:
+ *   macOS   – Apple HIG: SF type, vibrancy materials, inset grouped lists,
+ *             segmented controls, 10px radii, system blue.
+ *   Windows – Fluent 2: Segoe UI Variable, solid Mica-like surfaces, 8px
+ *             cards, 4px controls, pivot-style tabs, Windows accent.
+ *   Linux   – GNOME HIG / Adwaita: Cantarell/system-ui, boxed lists, pill
+ *             switches, 12px radii, GNOME blue.
+ *
+ * <html data-theme="light|dark">     effective colour scheme (set by bridge.js)
+ * <html data-platform="macos|windows|linux">
+ */
+
+:root {
+  /* ---- shared scale ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+
+  --fs-caption: 11px;
+  --fs-small: 12px;
+  --fs-body: 13px;
+  --fs-title: 15px;
+  --fs-heading: 22px;
+
+  --radius-control: 6px;
+  --radius-card: 10px;
+  --radius-window: 12px;
+
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --dur: 140ms;
+
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, "Cascadia Mono", "DejaVu Sans Mono", monospace;
+
+  /* ---- light (default) ---- */
+  color-scheme: light;
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --surface-2: #eceef2;
+  --text: #1c1e22;
+  --text-2: #565b66;
+  --text-3: #858a95;
+  --title: #0e1013;
+  --border: rgba(16, 24, 40, 0.12);
+  --separator: rgba(16, 24, 40, 0.08);
+  --hover: rgba(16, 24, 40, 0.05);
+  --pressed: rgba(16, 24, 40, 0.09);
+  --shadow: 0 8px 28px rgba(16, 24, 40, 0.16), 0 0 0 0.5px rgba(16, 24, 40, 0.12);
+
+  --accent: #0a64d6;
+  --accent-hover: #0856b8;
+  --on-accent: #ffffff;
+  --accent-soft: rgba(10, 100, 214, 0.12);
+
+  --danger: #c9322b;
+  --success: #1b8a4b;
+  --warning: #b86e00;
+  --pin: #c27803;
+
+  --focus-ring: 0 0 0 3px rgba(10, 100, 214, 0.35);
+
+  /* surfaces that differ when the window is a vibrancy material (macOS) */
+  --panel-bg: var(--bg);
+  --card-bg: var(--surface);
+  --card-border: var(--border);
+  --sidebar-bg: var(--surface-2);
+  --field-bg: var(--surface-2);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #1b1c1f;
+  --surface: #26282c;
+  --surface-2: #2f3237;
+  --text: #f1f2f4;
+  --text-2: #a9adb6;
+  --text-3: #8d929c;
+  --title: #ffffff;
+  --border: rgba(255, 255, 255, 0.14);
+  --separator: rgba(255, 255, 255, 0.09);
+  --hover: rgba(255, 255, 255, 0.07);
+  --pressed: rgba(255, 255, 255, 0.12);
+  --shadow: 0 10px 32px rgba(0, 0, 0, 0.55), 0 0 0 0.5px rgba(255, 255, 255, 0.14);
+
+  --accent: #3b8cf0;
+  --accent-hover: #5a9df2;
+  --on-accent: #ffffff;
+  --accent-soft: rgba(59, 140, 240, 0.2);
+
+  --danger: #ff6b63;
+  --success: #3ccf7c;
+  --warning: #f0a53a;
+  --pin: #f2b24a;
+
+  --focus-ring: 0 0 0 3px rgba(91, 157, 242, 0.45);
+}
+
+/* ======================= macOS – Apple HIG ======================= */
+:root[data-platform="macos"] {
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  --radius-control: 6px;
+  --radius-card: 10px;
+  --radius-window: 12px;
+  --accent: #007aff;
+  --accent-hover: #0066d6;
+  --accent-soft: rgba(0, 122, 255, 0.14);
+  --focus-ring: 0 0 0 3.5px rgba(0, 122, 255, 0.4);
+  --danger: #ff3b30;
+  --success: #28a745;
+  --bg: #f5f5f7;
+}
+:root[data-platform="macos"][data-theme="dark"] {
+  --accent: #0a84ff;
+  --accent-hover: #409cff;
+  --accent-soft: rgba(10, 132, 255, 0.22);
+  --danger: #ff453a;
+  --success: #32d74b;
+  --bg: #1e1e1e;
+  --surface: #2a2a2c;
+  --surface-2: #343437;
+}
+/* The popup/sidebar sit on NSVisualEffectView: keep them see-through and let
+   the material provide the backdrop. */
+:root[data-platform="macos"] {
+  /* A translucent tint, never fully transparent: the vibrancy still shows
+     through, but text keeps its contrast even if the native material's
+     light/dark appearance ever disagrees with the app theme. */
+  --panel-bg: rgba(246, 246, 248, 0.78);
+  --card-bg: rgba(255, 255, 255, 0.62);
+  --card-border: rgba(0, 0, 0, 0.08);
+  --sidebar-bg: rgba(238, 238, 242, 0.72);
+  --field-bg: rgba(0, 0, 0, 0.06);
+}
+:root[data-platform="macos"][data-theme="dark"] {
+  --panel-bg: rgba(28, 28, 30, 0.84);
+  --card-bg: rgba(255, 255, 255, 0.07);
+  --card-border: rgba(255, 255, 255, 0.08);
+  --sidebar-bg: rgba(34, 34, 36, 0.8);
+  --field-bg: rgba(255, 255, 255, 0.1);
+}
+
+/* ======================= Windows – Fluent 2 ======================= */
+:root[data-platform="windows"] {
+  --font: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Cascadia Mono", Consolas, ui-monospace, monospace;
+  --fs-body: 14px;
+  --fs-small: 12px;
+  --radius-control: 4px;
+  --radius-card: 8px;
+  --radius-window: 8px;
+  --accent: #0067c0;
+  --accent-hover: #005aa8;
+  --accent-soft: rgba(0, 103, 192, 0.12);
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+  --bg: #f3f3f3;
+  --surface: #fbfbfb;
+  --surface-2: #eeeeee;
+  --card-border: rgba(0, 0, 0, 0.06);
+  --danger: #c42b1c;
+}
+:root[data-platform="windows"][data-theme="dark"] {
+  --accent: #4cc2ff;
+  --accent-hover: #6ccbff;
+  --on-accent: #003a5c;
+  --accent-soft: rgba(76, 194, 255, 0.18);
+  --bg: #202020;
+  --surface: #2b2b2b;
+  --surface-2: #323232;
+  --card-border: rgba(255, 255, 255, 0.07);
+  --danger: #ff99a4;
+}
+
+/* ======================= Linux – GNOME / Adwaita ======================= */
+:root[data-platform="linux"] {
+  --font: Cantarell, "Inter", "Noto Sans", "Ubuntu", system-ui, sans-serif;
+  --font-mono: "Source Code Pro", "DejaVu Sans Mono", ui-monospace, monospace;
+  --radius-control: 6px;
+  --radius-card: 12px;
+  --radius-window: 0px;
+  --accent: #3584e4;
+  --accent-hover: #1c71d8;
+  --accent-soft: rgba(53, 132, 228, 0.16);
+  --focus-ring: 0 0 0 2px var(--accent);
+  --bg: #fafafa;
+  --surface: #ffffff;
+  --surface-2: #ebebeb;
+  --danger: #e01b24;
+  --success: #26a269;
+}
+:root[data-platform="linux"][data-theme="dark"] {
+  --accent: #78aeed;
+  --accent-hover: #99c1f1;
+  --on-accent: #0b2a4d;
+  --accent-soft: rgba(120, 174, 237, 0.2);
+  --bg: #242424;
+  --surface: #303030;
+  --surface-2: #3a3a3a;
+  --danger: #ff7b63;
+  --success: #57e389;
+}
+
+/* ======================= shared building blocks ======================= */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body { height: 100%; }
+
+body {
+  font-family: var(--font);
+  font-size: var(--fs-body);
+  line-height: 1.4;
+  color: var(--text);
+  background: var(--panel-bg);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: default;
+}
+
+button, input, select { font: inherit; color: inherit; }
+button { cursor: default; background: none; border: none; }
+input, textarea, pre, .html-content, .selectable { -webkit-user-select: text; user-select: text; }
+
+:focus { outline: none; }
+:focus-visible { box-shadow: var(--focus-ring); }
+
+kbd {
+  font-family: var(--font);
+  font-size: var(--fs-caption);
+  min-width: 20px;
+  padding: 1px 5px;
+  text-align: center;
+  color: var(--text-2);
+  background: var(--field-bg);
+  border: 1px solid var(--separator);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+}
+
+.icon { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Toast */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 56px;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 32px);
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: var(--fs-small);
+  font-weight: 500;
+  background: var(--text);
+  color: var(--bg);
+  box-shadow: var(--shadow);
+  pointer-events: none;
+  z-index: 10000;
+  animation: toast-in 200ms var(--ease), toast-out 200ms var(--ease) 1.8s forwards;
+}
+.toast.error { background: var(--danger); color: #fff; }
+.toast.success::before { content: "✓ "; color: var(--success); font-weight: 700; }
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, 8px); } }
+@keyframes toast-out { to { opacity: 0; transform: translate(-50%, 8px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 1ms !important; transition-duration: 1ms !important; }
+}

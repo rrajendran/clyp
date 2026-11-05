@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clyp</title>
+  <script src="js/bridge.js"></script>
+  <link rel="stylesheet" href="css/theme.css">
+  <link rel="stylesheet" href="css/main.css">
+</head>
+
+<body data-mode="popup">
+  <div class="app-container">
+    <header class="header">
+      <div class="branding">
+        <img class="logo" src="assets/icon-32.png" width="20" height="20" alt="">
+        <h1>Clipboard</h1>
+      </div>
+      <div class="header-actions">
+      <button class="icon-btn" id="expandBtn" title="Open in window" aria-label="Open in window">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+      </button>
+      <button class="icon-btn" id="settingsBtn" title="Settings" aria-label="Settings">
+        <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+      </div>
+    </header>
+
+    <div class="search-container">
+      <svg class="icon search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+      <input type="search" id="searchInput" class="search-input" placeholder="Search" autocomplete="off" spellcheck="false" aria-label="Search clipboard history">
+    </div>
+
+    <div class="filter-tabs" role="tablist" aria-label="Filter">
+      <button class="filter-tab active" role="tab" aria-selected="true" data-filter="all">All</button>
+      <button class="filter-tab" role="tab" aria-selected="false" data-filter="text">Text</button>
+      <button class="filter-tab" role="tab" aria-selected="false" data-filter="image">Images</button>
+      <button class="filter-tab" role="tab" aria-selected="false" data-filter="pinned">Pinned</button>
+    </div>
+
+    <main class="history-container">
+      <div id="historyList" class="history-list" role="listbox" aria-label="Clipboard history"></div>
+
+      <div id="emptyState" class="empty-state">
+        <img src="assets/icon-128.png" class="empty-icon" width="64" height="64" alt="">
+        <p class="empty-title">No Clipboard History</p>
+        <small class="empty-subtitle">Things you copy will show up here.</small>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <span class="footer-hint">
+        <span><kbd>↑</kbd><kbd>↓</kbd> Navigate</span>
+        <span><kbd>↩</kbd> Copy</span>
+        <span><kbd>Esc</kbd> Close</span>
+      </span>
+    </footer>
+  </div>
+
+  <div class="drawer-overlay" id="drawerOverlay"></div>
+  <section id="textDrawer" class="text-drawer" aria-label="Full content">
+    <div class="drawer-header">
+      <h2>Full Content</h2>
+      <button class="icon-btn" id="drawerCloseBtn" title="Close" aria-label="Close">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="drawer-content"><pre id="drawerText"></pre></div>
+    <div class="drawer-footer">
+      <button class="btn primary" id="copyDrawerBtn">Copy All</button>
+    </div>
+  </section>
+
+  <script src="js/renderer.js"></script>
+</body>
+</html>

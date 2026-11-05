@@ -5,7 +5,7 @@ node_modules/
 dist/
 build/
 
-# Electron
+# Legacy
 out/
 
 # OS
@@ -25,3 +25,7 @@ npm-debug.log*
 # Environment
 .env
 .env.local
+
+# Tauri / Rust
+src-tauri/target/
+src-tauri/gen/
