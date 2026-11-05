@@ -11,14 +11,17 @@ permissions:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: macos-latest
-            arch: arm64
+            args: --target aarch64-apple-darwin --bundles dmg
           - os: macos-latest
-            arch: x64
+            args: --target x86_64-apple-darwin --bundles dmg
           - os: windows-latest
-          - os: ubuntu-latest
+            args: --bundles nsis
+          - os: ubuntu-22.04
+            args: --bundles deb,appimage
 
     runs-on: ${{ matrix.os }}
 
@@ -28,80 +31,33 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: npm
 
-      - name: Install dependencies
-        run: npm ci
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.os == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
-      - name: Build mac (ARM64)
-        if: matrix.os == 'macos-latest' && matrix.arch == 'arm64'
-        run: npm run build:mac -- --arm64
-        env:
-          GITHUB_TOKEN: ${{ secrets.CLYP_SECRET }}
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
 
-      - name: Build mac (x64)
-        if: matrix.os == 'macos-latest' && matrix.arch == 'x64'
-        run: npm run build:mac -- --x64
-        env:
-          GITHUB_TOKEN: ${{ secrets.CLYP_SECRET }}
-
-      - name: Build windows
-        if: matrix.os == 'windows-latest'
-        run: npm run build:win
-        env:
-          GITHUB_TOKEN: ${{ secrets.CLYP_SECRET }}
-
-      - name: Build linux
-        if: matrix.os == 'ubuntu-latest'
-        run: npm run build:linux
-        env:
-          GITHUB_TOKEN: ${{ secrets.CLYP_SECRET }}
-
-      - name: list dist output
-        shell: bash
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-22.04'
         run: |
-          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
-          echo "Listing workspace root:"
-          ls -la
-          echo "Listing dist directory (if present):"
-          ls -la dist || true
-          echo "Recursive find in dist:"
-          find dist -maxdepth 4 -type f -exec ls -la {} \; || true
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libxdo-dev libxcb-shape0-dev libxcb-xfixes0-dev
 
-      # macOS: upload dmg (or zip the .app and upload)
-      - name: Create GitHub Release (mac)
-        if: matrix.os == 'macos-latest' && success()
-        uses: softprops/action-gh-release@v1
+      - run: npm ci
+
+      - name: Rust tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+
+      - name: Build and publish release assets
+        uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.CLYP_SECRET }}
         with:
-          files: |
-            dist/*.dmg
-            dist/latest-mac.yml
-            # If you prefer to upload the .app bundle, zip it first and upload the zip:
-            # dist/*.zip
-
-      # Windows: upload installer/exe
-      - name: Create GitHub Release (windows)
-        if: matrix.os == 'windows-latest' && success()
-        uses: softprops/action-gh-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.CLYP_SECRET }}
-        with:
-          files: |
-            dist/*.exe
-            dist/*.msi
-            dist/latest.yml
-
-      # Linux: upload deb/rpm/AppImage
-      - name: Create GitHub Release (linux)
-        if: matrix.os == 'ubuntu-latest' && success()
-        uses: softprops/action-gh-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.CLYP_SECRET }}
-        with:
-          files: |
-            dist/*.deb
-            dist/*.rpm
-            dist/*.AppImage
-            dist/latest-linux.yml
+          tagName: ${{ github.ref_name }}
+          releaseName: Clyp ${{ github.ref_name }}
+          releaseDraft: false
+          args: ${{ matrix.args }}

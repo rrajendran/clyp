@@ -2,111 +2,23 @@
   "name": "clyp",
   "version": "1.0.3",
   "description": "Fast, Private, Cross-Platform Clipboard Manager",
-  "main": "app/main/main.js",
   "author": "Clyp rameshchinnu61@gmail.com",
   "license": "MIT",
+  "private": true,
   "scripts": {
-    "start": "electron .",
-    "dev": "electron . --dev",
-    "clean": "rm -rf dist",
-    "build": "electron-builder",
-    "build:mac": "electron-builder --mac",
-    "build:win": "electron-builder --win",
-    "build:linux": "electron-builder --linux",
-    "build:all": "npm run clean && electron-builder --mac --win --linux",
-    "generate-icons": "node assets/icons/generate-icons-sharp.js",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
-  },
-  "dependencies": {
-    "electron-store": "^8.1.0",
-    "electron-updater": "^6.1.7",
-    "file-type": "^21.3.0",
-    "is-html": "^3.2.0",
-    "mime-types": "^3.0.2"
+    "start": "tauri dev",
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "build:mac": "tauri build --bundles dmg",
+    "build:win": "tauri build --bundles nsis",
+    "build:linux": "tauri build --bundles deb,appimage",
+    "test": "npm run test:ui && cargo test --manifest-path src-tauri/Cargo.toml",
+    "tauri": "tauri",
+    "generate-icons": "./scripts/generate-icons.sh",
+    "test:ui": "node --test \"test/ui/*.test.js\""
   },
   "devDependencies": {
-    "electron": "^28.0.0",
-    "electron-builder": "^24.9.1",
-    "jest": "^29.7.0",
-    "jest-environment-node": "^29.7.0",
-    "js-beautify": "^1.14.8",
-    "sharp": "^0.34.5"
-  },
-  "build": {
-    "appId": "com.clyp.clipboard",
-    "productName": "Clyp",
-    "asar": true,
-    "compression": "maximum",
-    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
-    "publish": {
-      "provider": "github",
-      "owner": "rameshchinnu61",
-      "repo": "clyp",
-      "publishAutoUpdate": true,
-      "releaseType": "release"
-    },
-    "directories": {
-      "output": "dist",
-      "buildResources": "assets"
-    },
-    "files": [
-      "app/**",
-      "assets/**",
-      "config/**",
-      "package.json"
-    ],
-    "mac": {
-      "category": "public.app-category.productivity",
-      "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        },
-        {
-          "target": "zip",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
-      ],
-      "icon": "assets/icons/mac/icon.icns"
-    },
-    "win": {
-      "target": [
-        "nsis"
-      ],
-      "icon": "assets/icons/png/512x512.png"
-    },
-    "linux": {
-      "target": [
-        {
-          "target": "AppImage",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        },
-        {
-          "target": "deb",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
-      ],
-      "icon": "assets/icons/png/512x512.png",
-      "category": "Utility",
-      "maintainer": "Ramesh Rajendran rameshchinnu61@gmail.com"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true
-    }
+    "@tauri-apps/cli": "^2.9.0",
+    "jsdom": "^25.0.1"
   }
 }
