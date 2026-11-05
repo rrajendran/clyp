@@ -5,6 +5,8 @@ let filteredHistory = [];
 let selectedIndex = -1;
 let currentFilter = 'all';
 let searchQuery = '';
+let inspectedId = null;   // item shown in the inspector pane (big window only)
+let inspectorKey = '';    // what is currently rendered there, to avoid needless re-renders
 
 // The same list code runs in two places:
 //   popup     – the compact launcher window (index.html)
@@ -174,9 +176,19 @@ function setupListListeners() {
     window.clyp.showSettings(`clipboard/${currentFilter}`);
   });
 
-  document.getElementById('drawerCloseBtn').addEventListener('click', closeTextDrawer);
-  document.getElementById('drawerOverlay').addEventListener('click', closeTextDrawer);
-  document.getElementById('copyDrawerBtn').addEventListener('click', copyDrawerContent);
+  // Popup: full-content sheet. (The big window uses the inspector pane.)
+  document.getElementById('drawerCloseBtn')?.addEventListener('click', closeTextDrawer);
+  document.getElementById('drawerOverlay')?.addEventListener('click', closeTextDrawer);
+  document.getElementById('copyDrawerBtn')?.addEventListener('click', copyDrawerContent);
+
+  // Big window: inspector pane controls.
+  document.getElementById('inspectorClose')?.addEventListener('click', closeInspector);
+  document.getElementById('inspectorCopy')?.addEventListener('click', () => {
+    const item = history.find((h) => h.id === inspectedId);
+    if (item) copyItemObject(item);
+  });
+  document.getElementById('inspectorPin')?.addEventListener('click', () => { if (inspectedId) togglePin(inspectedId); });
+  document.getElementById('inspectorDelete')?.addEventListener('click', () => { if (inspectedId) deleteItem(inspectedId); });
 
   document.addEventListener('keydown', handleKeyPress);
 
@@ -207,7 +219,8 @@ function handleKeyPress(e) {
 
   if (e.key === 'Escape') {
     if (tagDialog) tagDialog.remove();
-    else if (document.getElementById('textDrawer').classList.contains('open')) closeTextDrawer();
+    else if (document.getElementById('textDrawer')?.classList.contains('open')) closeTextDrawer();
+    else if (inspectedId) closeInspector();
     else if (IS_POPUP) window.clyp.hideWindow();
     return;
   }
@@ -225,12 +238,14 @@ function handleKeyPress(e) {
     if (selectedIndex < filteredHistory.length - 1) {
       selectedIndex++;
       updateSelection();
+      followSelectionInInspector();
     }
   } else if (e.key === 'ArrowUp') {
     e.preventDefault();
     if (selectedIndex > 0) {
       selectedIndex--;
       updateSelection();
+      followSelectionInInspector();
     } else if (selectedIndex === 0) {
       selectedIndex = -1;
       updateSelection();
@@ -238,7 +253,7 @@ function handleKeyPress(e) {
     }
   } else if (e.key === 'Enter' && selectedIndex >= 0) {
     e.preventDefault();
-    copyItem(selectedIndex);
+    activateItem(selectedIndex);
   } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'c') {
     if (window.getSelection().toString()) return; // let the copy event handle it
     if (selectedIndex >= 0) {
@@ -296,6 +311,7 @@ function updateCounts() {
 
 function renderHistory() {
   updateCounts();
+  refreshInspector();
   const list = document.getElementById('historyList');
   const empty = document.getElementById('emptyState');
 
@@ -316,6 +332,7 @@ const ICONS = {
   file: '<svg class="icon" viewBox="0 0 24 24"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M13 2v7h7"/></svg>',
   pin: '<svg class="icon" viewBox="0 0 24 24"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>',
   tag: '<svg class="icon" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><path d="M7 7h.01"/></svg>',
+  copy: '<svg class="icon" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
   trash: '<svg class="icon" viewBox="0 0 24 24"><path d="M3 6h18M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>',
 };
 
@@ -326,19 +343,23 @@ function createHistoryItemHTML(item, index) {
   const tagsHTML = item.tags && item.tags.length
     ? `<div class="item-tags">${item.tags.map((t) => `<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>`
     : '<span></span>';
-  const lengthy = item.type !== 'image' && isLengthyContent(item.content);
+  // Popup: long text gets a "View full" badge and opens a sheet.
+  // Big window: long text and images open the inspector pane instead (no badge).
+  const lengthy = IS_POPUP && item.type !== 'image' && isLengthyContent(item.content);
+  const inspectable = !IS_POPUP && isInspectable(item);
 
   return `
-    <div class="history-item ${selected ? 'selected' : ''} ${item.pinned ? 'pinned' : ''}" role="option" aria-selected="${selected}" data-index="${index}" data-id="${escapeHtml(item.id)}">
+    <div class="history-item ${selected ? 'selected' : ''} ${item.pinned ? 'pinned' : ''} ${item.id === inspectedId ? 'inspected' : ''}" role="option" aria-selected="${selected}" data-index="${index}" data-id="${escapeHtml(item.id)}">
       <div class="item-header">
         <div class="item-type">${ICONS[item.type] || ICONS.text}<span>${TYPE_LABELS[item.type] || escapeHtml(item.type)}</span></div>
         <div class="item-actions">
+          ${IS_POPUP ? '' : `<button class="action-btn copy-btn" data-action="copy" title="Copy" aria-label="Copy">${ICONS.copy}</button>`}
           <button class="action-btn pin-btn ${item.pinned ? 'pinned' : ''}" data-action="pin" title="${item.pinned ? 'Unpin' : 'Pin'}" aria-label="${item.pinned ? 'Unpin' : 'Pin'}">${ICONS.pin}</button>
           ${item.pinned ? `<button class="action-btn tag-btn" data-action="tag" title="Manage Tags" aria-label="Manage Tags">${ICONS.tag}</button>` : ''}
           <button class="action-btn delete-btn" data-action="delete" title="Delete" aria-label="Delete">${ICONS.trash}</button>
         </div>
       </div>
-      <div class="item-content ${escapeHtml(item.type)} ${lengthy ? 'lengthy' : ''}">${getContentHTML(item)}</div>
+      <div class="item-content ${escapeHtml(item.type)} ${lengthy ? 'lengthy' : ''} ${inspectable ? 'inspectable' : ''}">${getContentHTML(item)}</div>
       <div class="item-footer">
         ${tagsHTML}
         <span class="item-timestamp">${formatTimestamp(item.timestamp)}</span>
@@ -375,8 +396,20 @@ function attachItemEventListeners() {
     el.addEventListener('click', async (e) => {
       if (e.target.closest('.action-btn')) return;
       const index = filteredHistory.findIndex((h) => h.id === id);
-      if (e.target.closest('.item-content.lengthy')) openTextDrawer(index);
-      else await copyItem(index);
+      if (IS_POPUP) {
+        if (e.target.closest('.item-content.lengthy')) openTextDrawer(index);
+        else await copyItem(index);
+        return;
+      }
+      selectedIndex = index;
+      updateSelection();
+      await activateItem(index);
+    });
+
+    el.querySelector('.copy-btn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const item = history.find((h) => h.id === id);
+      if (item) copyItemObject(item);
     });
 
     el.querySelector('.pin-btn')?.addEventListener('click', (e) => { e.stopPropagation(); togglePin(id); });
@@ -389,21 +422,32 @@ function attachItemEventListeners() {
 // Actions
 // ---------------------------------------------------------------------------
 
-async function copyItem(index) {
-  const item = filteredHistory[index];
-  if (!item) return;
-
-  let payload;
+function buildPayload(item) {
   if (item.type === 'html') {
     // Keep both flavours so rich targets get formatting and plain targets get
     // tidy, indented source.
-    payload = { html: item.content || '', text: formatHtmlOrXml(item.content || '') };
-  } else if (item.type === 'image') {
-    payload = { image: item.content }; // pasted as a real image, not base64 text
-  } else {
-    payload = { text: item.content };
+    return { html: item.content || '', text: formatHtmlOrXml(item.content || '') };
   }
+  if (item.type === 'image') return { image: item.content }; // a real image, not base64 text
+  return { text: item.content };
+}
 
+async function copyItem(index) {
+  const item = filteredHistory[index];
+  if (item) await copyItemObject(item);
+}
+
+// Enter / click on a row. Popup: copy. Big window: long text and images open
+// the inspector (copy is in the pane / row button / Cmd+C); short items copy.
+async function activateItem(index) {
+  const item = filteredHistory[index];
+  if (!item) return;
+  if (!IS_POPUP && isInspectable(item)) openInspector(item.id);
+  else await copyItemObject(item);
+}
+
+async function copyItemObject(item) {
+  const payload = buildPayload(item);
   try {
     await window.clyp.copyToClipboard(payload, !IS_POPUP);
     if (IS_POPUP) await window.clyp.hideWindow();
@@ -611,8 +655,8 @@ function openTextDrawer(index) {
 }
 
 function closeTextDrawer() {
-  document.getElementById('textDrawer').classList.remove('open');
-  document.getElementById('drawerOverlay').classList.remove('active');
+  document.getElementById('textDrawer')?.classList.remove('open');
+  document.getElementById('drawerOverlay')?.classList.remove('active');
 }
 
 async function copyDrawerContent() {
@@ -622,6 +666,123 @@ async function copyDrawerContent() {
   closeTextDrawer();
   if (IS_POPUP) await window.clyp.hideWindow();
   else showToast('Copied', 'success');
+}
+
+// ---------------------------------------------------------------------------
+// Inspector pane (big window): full text or full image for the clicked item
+// ---------------------------------------------------------------------------
+
+// Images and long text are worth a closer look; short items just copy on click.
+function isInspectable(item) {
+  return item.type === 'image' || isLengthyContent(item.content);
+}
+
+function formatBytes(n) {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function inspectorSummary(item) {
+  const when = new Date(item.timestamp).toLocaleString();
+  if (item.type === 'image') {
+    const dims = item.size ? `${item.size.width} × ${item.size.height} · ` : '';
+    // A data URL carries ~4 bytes of text per 3 bytes of image.
+    const bytes = Math.round(((item.content || '').length - (item.content || '').indexOf(',') - 1) * 0.75);
+    return { type: 'Image', metrics: `${dims}${formatBytes(Math.max(bytes, 0))}`, when };
+  }
+  const text = item.type === 'html' ? formatHtmlOrXml(item.content || '') : (item.content || '');
+  const lines = text.split('\n').length;
+  return {
+    type: item.type === 'html' ? 'Rich Text' : (TYPE_LABELS[item.type] || 'Text'),
+    metrics: `${text.length.toLocaleString()} characters · ${lines.toLocaleString()} ${lines === 1 ? 'line' : 'lines'}`,
+    when,
+    text,
+  };
+}
+
+function openInspector(id) {
+  const item = history.find((h) => h.id === id);
+  const pane = document.getElementById('inspector');
+  if (!item || !pane) return;
+  inspectedId = id;
+  inspectorKey = '';
+  renderInspector(item);
+  pane.dataset.open = 'true';
+  pane.setAttribute('aria-hidden', 'false');
+  markInspectedRow();
+}
+
+function closeInspector() {
+  const pane = document.getElementById('inspector');
+  inspectedId = null;
+  inspectorKey = '';
+  if (pane) {
+    pane.dataset.open = 'false';
+    pane.setAttribute('aria-hidden', 'true');
+    document.getElementById('inspectorBody').replaceChildren();
+  }
+  markInspectedRow();
+}
+
+function markInspectedRow() {
+  document.querySelectorAll('.history-item').forEach((el) => el.classList.toggle('inspected', el.dataset.id === inspectedId));
+}
+
+// Content goes in via textContent / the img src property – never innerHTML –
+// so whatever was copied cannot inject markup into the app.
+function renderInspector(item) {
+  const info = inspectorSummary(item);
+  document.getElementById('inspectorType').textContent = info.type;
+  document.getElementById('inspectorSub').textContent = info.metrics;
+  document.getElementById('inspectorWhen').textContent = info.when;
+
+  const tags = document.getElementById('inspectorTags');
+  tags.replaceChildren(...(item.tags || []).map((t) => {
+    const span = document.createElement('span');
+    span.className = 'tag';
+    span.textContent = t;
+    return span;
+  }));
+
+  const key = `${item.id}:${(item.content || '').length}`;
+  if (key !== inspectorKey) { // keep scroll position when only pin/tags changed
+    inspectorKey = key;
+    const body = document.getElementById('inspectorBody');
+    if (item.type === 'image') {
+      const img = document.createElement('img');
+      img.alt = 'Clipboard image';
+      img.src = item.content;
+      body.replaceChildren(img);
+    } else {
+      const pre = document.createElement('pre');
+      pre.textContent = info.text;
+      body.replaceChildren(pre);
+    }
+    body.scrollTop = 0;
+  }
+
+  const pin = document.getElementById('inspectorPin');
+  pin.textContent = item.pinned ? 'Unpin' : 'Pin';
+  const del = document.getElementById('inspectorDelete');
+  del.disabled = !!item.pinned;
+  del.title = item.pinned ? 'Unpin to delete' : 'Delete';
+}
+
+// Called whenever the history changes: keep the pane honest.
+function refreshInspector() {
+  if (!inspectedId) return;
+  const item = history.find((h) => h.id === inspectedId);
+  if (!item) closeInspector();     // deleted / trimmed away
+  else renderInspector(item);      // pinned, tagged or edited
+}
+
+// With the pane open, moving the selection with the arrow keys previews the
+// next item (like Quick Look). Short items leave the pane as it is.
+function followSelectionInInspector() {
+  if (IS_POPUP || !inspectedId) return;
+  const item = filteredHistory[selectedIndex];
+  if (item && isInspectable(item)) openInspector(item.id);
 }
 
 // More than 300 characters or 5 lines counts as "lengthy".
@@ -636,6 +797,7 @@ function isLengthyContent(content) {
 // ---------------------------------------------------------------------------
 
 window.clypView = {
+  closeInspector,
   setFilter(filter) {
     currentFilter = ['all', 'text', 'image', 'pinned'].includes(filter) ? filter : 'all';
     selectedIndex = -1;

@@ -125,12 +125,6 @@ test('narrow window: sidebar is an overlay drawer that closes after choosing a p
   assert.equal(app.dataset.sidebar, 'closed');
 });
 
-test('shared lengthy-content sheet exists in the big window', async () => {
-  const { doc } = await load('settings.html', { query: '?go=clipboard/all' });
-  doc.querySelector('#historyList .history-item[data-id="6"] .item-content').click();
-  assert.ok(doc.getElementById('textDrawer').classList.contains('open'));
-});
-
 test('big window copies keep the clipboard (keep=true); popup copies do not', async () => {
   let ui = await load('settings.html', { query: '?go=clipboard/all' });
   ui.doc.querySelector('#historyList .history-item[data-id="2"]').click();

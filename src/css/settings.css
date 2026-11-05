@@ -119,7 +119,8 @@ body { background: var(--bg); }
 .topbar-search .search-icon { left: 10px; top: 50%; transform: translateY(-50%); }
 .settings-container[data-view="settings"] .topbar-search { display: none; }
 
-.scroller { flex: 1; overflow-y: auto; }
+.content-row { flex: 1; min-height: 0; display: flex; position: relative; }
+.scroller { flex: 1; min-width: 0; overflow-y: auto; }
 .canvas {
   width: 100%;
   max-width: var(--canvas-w);
@@ -138,24 +139,68 @@ body { background: var(--bg); }
 .canvas .action-btn { width: 22px; height: 22px; }
 .canvas .item-content { max-height: 2.9em; line-height: 1.4; }      /* two lines */
 .canvas .item-content.html { max-height: 2.9em; }
+.canvas .item-content.image { max-height: none; }
 .canvas .item-content img { max-height: 84px; }
 .canvas .item-footer { margin-top: 1px; }
 .canvas .history-item.pinned::before { top: 6px; bottom: 6px; }
-/* the "View full" cue lives in the footer so it does not eat a content line */
-.canvas .item-content.lengthy::before { display: none; }
-.canvas .item-content.lengthy + .item-footer::before { content: "View full ›"; font-size: var(--fs-caption); font-weight: 600; color: var(--accent); }
+/* long text and images open the inspector pane: hint it with a fade + pointer */
+.canvas .item-content.inspectable { cursor: pointer; -webkit-mask-image: linear-gradient(#000 65%, transparent); mask-image: linear-gradient(#000 65%, transparent); }
+.canvas .item-content.image.inspectable { -webkit-mask-image: none; mask-image: none; }
+.canvas .history-item.inspected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--card-bg)); }
 .canvas .empty-state { height: 52vh; }
 
-/* full-content sheet becomes a centred panel */
-[data-mode="workspace"] .text-drawer {
-  left: max(10px, calc(50% - 360px));
-  right: auto;
-  width: min(720px, calc(100% - 20px));
-  bottom: 24px;
-}
 [data-mode="workspace"] .toast { bottom: 24px; }
 
+/* ---- inspector pane ---- */
+.inspector {
+  flex: none;
+  width: clamp(320px, 38%, 460px);
+  display: none;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--surface);
+  border-left: 1px solid var(--separator);
+}
+.inspector[data-open="true"] { display: flex; animation: inspector-in 180ms var(--ease); }
+.settings-container[data-view="settings"] .inspector { display: none; }
+
+.inspector-header { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 10px 4px 16px; }
+.inspector-title { min-width: 0; }
+.inspector-title h2 { font-size: var(--fs-title); font-weight: 600; color: var(--title); }
+.inspector-sub { font-size: var(--fs-small); color: var(--text-2); font-variant-numeric: tabular-nums; }
+.inspector-meta { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 0 16px 10px; font-size: var(--fs-caption); color: var(--text-3); border-bottom: 1px solid var(--separator); }
+.inspector-meta:empty { display: none; }
+.inspector-body { flex: 1; min-height: 0; overflow: auto; padding: 14px 16px; }
+.inspector-body:focus-visible { box-shadow: inset var(--focus-ring); }
+.inspector-body pre {
+  font-family: var(--font-mono);
+  font-size: var(--fs-small);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text);
+}
+.inspector-body img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  border-radius: 8px;
+  border: 1px solid var(--separator);
+  /* checkerboard so transparent images are visible in both themes */
+  background: repeating-conic-gradient(var(--surface-2) 0% 25%, var(--surface) 0% 50%) 50% / 16px 16px;
+}
+.inspector-footer { flex: none; display: flex; gap: 8px; padding: 10px 16px; border-top: 1px solid var(--separator); }
+.inspector-footer .btn.primary { flex: 1; }
+.inspector-footer .btn:disabled { opacity: 0.45; }
+
+@keyframes inspector-in { from { opacity: 0; transform: translateX(10px); } }
+
 /* ---- narrow windows: sidebar becomes an overlay drawer ---- */
+@media (max-width: 900px) {
+  .inspector { position: absolute; inset: 0 0 0 auto; z-index: 15; width: min(420px, 100%); box-shadow: var(--shadow); }
+}
+
 @media (max-width: 760px) {
   .sidebar {
     position: absolute;
